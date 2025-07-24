@@ -34,6 +34,10 @@ ExternalProject_Add(
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
         -DFLS_BUILD_SHARED_LIBS=OFF
+        -DCMAKE_CXX_STANDARD=20
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+        -DCMAKE_CXX_FLAGS="-std=c++20 -stdlib=libc++"
+        -DCMAKE_C_FLAGS="-std=c17"
     BUILD_BYPRODUCTS 
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so
@@ -47,6 +51,7 @@ add_library(FastLanes STATIC IMPORTED)
 set_target_properties(FastLanes PROPERTIES
     IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
     INTERFACE_INCLUDE_DIRECTORIES ${FASTLANES_INCLUDE_DIR}
+    INTERFACE_COMPILE_FEATURES cxx_std_20
 )
 
 # Add dependency to ensure FastLanes is built before our extension
