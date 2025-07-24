@@ -24,7 +24,7 @@ namespace duckdb {
 namespace ext_fastlane {
 
 // Forward declarations
-static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, const string& table_name, optional_ptr<ReplacementScanData> data);
+static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, ReplacementScanInput& input, optional_ptr<ReplacementScanData> data);
 
 struct ReadFastlaneBindData : public TableFunctionData {
   vector<string> files;
@@ -146,7 +146,8 @@ void RegisterReadFastlaneStream(DatabaseInstance& db) {
   config.replacement_scans.emplace_back(ReadFastlaneReplacementScan);
 }
 
-static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, const string& table_name, optional_ptr<ReplacementScanData> data) {
+static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, ReplacementScanInput& input, optional_ptr<ReplacementScanData> data) {
+  auto table_name = ReplacementScan::GetFullPath(input);
   auto lower_name = StringUtil::Lower(table_name);
   if (!StringUtil::EndsWith(lower_name, ".fls") && !StringUtil::EndsWith(lower_name, ".fastlane")) {
     return nullptr;
