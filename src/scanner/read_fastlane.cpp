@@ -5,6 +5,7 @@
 
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/multi_file/multi_file_reader.hpp"
+#include "duckdb/common/multi_file/multi_file_function.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/function/scalar_function.hpp"
