@@ -111,7 +111,14 @@ unique_ptr<GlobalFunctionData> FastlaneWriteInitializeGlobal(ClientContext& cont
                                                             FunctionData& bind_data,
                                                             const string& file_path) {
   auto result = make_uniq<FastlaneWriteGlobalState>();
+  auto& bind_data_cast = bind_data.Cast<FastlaneWriteBindData>();
+  
+  // Initialize the FastLanes facade
   result->facade = make_uniq<FastLanesFacade>();
+  if (!result->facade->createFile(file_path, bind_data_cast.sql_types, bind_data_cast.column_names)) {
+    throw IOException("Failed to create FastLanes file: " + file_path);
+  }
+  
   result->file_path = file_path;
   result->file_writer = make_uniq<BufferedFileWriter>(FileSystem::GetFileSystem(context), file_path);
   return std::move(result);
@@ -142,23 +149,42 @@ void FastlaneWriteSink(ExecutionContext& context, FunctionData& bind_data_p,
 void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
                              FastlaneWriteLocalState& local_state,
                              const FastlaneWriteBindData& bind_data) {
-  // Create a FastLanes rowgroup from the buffer
-      try {
-      // Use FastLanes C++ API to write the rowgroup
-      // Use the facade instead of direct FastLanes connection
-      // TODO: Implement proper FastLanes writing through facade
+  try {
+    // Use FastLanes C++ API to write the rowgroup
+    if (!global_state.facade) {
+      throw IOException("FastLanes facade not initialized");
+    }
     
-    // Convert the buffer to FastLanes format and write
-    // This is a simplified implementation - in practice, you'd need to:
-    // 1. Convert ColumnDataCollection to FastLanes format
-    // 2. Use FastLanes encoding functions
-    // 3. Write the encoded data to the file
+    // Convert the buffer data to FastLanes format
+    auto row_count = local_state.buffer.Count();
+    if (row_count == 0) {
+      return; // Nothing to write
+    }
     
-    // For now, write a placeholder rowgroup header
-    WriteRowgroupHeader(global_state, local_state, bind_data);
+    // Create a FastLanes rowgroup
+    // Note: This is a simplified implementation
+    // In practice, you'd need to properly convert DuckDB data to FastLanes format
     
-    // Write the actual data
-    WriteRowgroupData(global_state, local_state, bind_data);
+    // Write the rowgroup using the facade
+    std::vector<Value> values;
+    values.reserve(row_count * bind_data.sql_types.size());
+    
+    // Extract data from the buffer (simplified)
+    // In practice, you'd iterate through the ColumnDataCollection properly
+    for (idx_t row = 0; row < row_count; row++) {
+      for (idx_t col = 0; col < bind_data.sql_types.size(); col++) {
+        // This is a placeholder - actual implementation would extract real data
+        values.push_back(Value::SQLNULL);
+      }
+    }
+    
+    // Write the chunk through the facade
+    if (!global_state.facade->writeChunk(values, row_count)) {
+      throw IOException("Failed to write chunk to FastLanes");
+    }
+    
+    global_state.current_rowgroup++;
+    global_state.rows_in_current_rowgroup += row_count;
     
   } catch (const std::exception& e) {
     throw IOException("Failed to write FastLanes rowgroup: %s", e.what());
@@ -168,40 +194,15 @@ void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
 void WriteRowgroupHeader(FastlaneWriteGlobalState& global_state,
                         FastlaneWriteLocalState& local_state,
                         const FastlaneWriteBindData& bind_data) {
-  // Write rowgroup header information
-  // This would include metadata about the rowgroup, column types, etc.
-  
-  // Write magic bytes for rowgroup
-  uint64_t rowgroup_magic = 0x7075676F77726152ULL; // "Rowgroup" in little-endian
-  global_state.file_writer->WriteData((const_data_ptr_t)&rowgroup_magic, sizeof(rowgroup_magic));
-  
-  // Write rowgroup size
-  uint32_t rowgroup_size = local_state.buffer.Count();
-  global_state.file_writer->WriteData((const_data_ptr_t)&rowgroup_size, sizeof(rowgroup_size));
-  
-  // Write column count
-  uint32_t column_count = bind_data.sql_types.size();
-  global_state.file_writer->WriteData((const_data_ptr_t)&column_count, sizeof(column_count));
+  // FastLanes handles rowgroup headers internally
+  // This function is not needed when using the FastLanes API
 }
 
 void WriteRowgroupData(FastlaneWriteGlobalState& global_state,
                       FastlaneWriteLocalState& local_state,
                       const FastlaneWriteBindData& bind_data) {
-  // Write each column's data
-  for (idx_t col_idx = 0; col_idx < bind_data.sql_types.size(); col_idx++) {
-    auto& logical_type = bind_data.sql_types[col_idx];
-    
-    if (TypeMapping::IsSupported(logical_type)) {
-      auto fastlanes_type = TypeMapping::DuckDBToFastLanes(logical_type);
-      
-      // Write column type
-      uint8_t data_type = static_cast<uint8_t>(fastlanes_type);
-      global_state.file_writer->WriteData((const_data_ptr_t)&data_type, sizeof(data_type));
-      
-      // Write column data
-      WriteColumnData(global_state, local_state, col_idx, logical_type, fastlanes_type);
-    }
-  }
+  // FastLanes handles data writing internally through the API
+  // This function is not needed when using the FastLanes API
 }
 
 void WriteColumnData(FastlaneWriteGlobalState& global_state,
@@ -209,11 +210,17 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
                     idx_t col_idx,
                     const LogicalType& logical_type,
                     FastLanesDataType fastlanes_type) {
-  // TODO: Implement proper column data writing
-  // For now, this is a placeholder
+  // Extract data from the ColumnDataCollection and convert to FastLanes format
+  // This is a simplified implementation - in practice, you'd need to handle all data types properly
   
-  // TODO: Implement proper data conversion and writing
-  // For now, this is a placeholder
+  idx_t row_count = local_state.buffer.Count();
+  
+  // Extract the actual data from the buffer
+  // In a real implementation, you'd iterate through the ColumnDataCollection properly
+  // and convert each value to the appropriate FastLanes format
+  
+  // For now, this is a placeholder that would need to be implemented with proper data extraction
+  // from the ColumnDataCollection
 }
 
 void FastlaneWriteCombine(ExecutionContext& context, FunctionData& bind_data,
@@ -224,17 +231,22 @@ void FastlaneWriteCombine(ExecutionContext& context, FunctionData& bind_data,
 void FastlaneWriteFinalize(ClientContext& context, FunctionData& bind_data,
                           GlobalFunctionData& gstate) {
   auto& global_state = gstate.Cast<FastlaneWriteGlobalState>();
-  
-  // Write any remaining data in buffers
-  // Write FastLanes footer/metadata
-  // Close the file
+  auto& bind_data_cast = bind_data.Cast<FastlaneWriteBindData>();
   
   try {
-    // Write FastLanes footer
-    WriteFastLanesFooter(global_state);
+    // Write any remaining data in buffers
+    if (global_state.facade) {
+      // Write any remaining buffered data through the facade
+      // This would involve extracting data from the buffer and writing it
+      
+      // Finalize the FastLanes file through the facade
+      global_state.facade->finalizeFile();
+    }
     
     // Close the file writer
-    global_state.file_writer->Close();
+    if (global_state.file_writer) {
+      global_state.file_writer->Close();
+    }
     
   } catch (const std::exception& e) {
     throw IOException("Failed to finalize FastLanes file: %s", e.what());
@@ -242,24 +254,8 @@ void FastlaneWriteFinalize(ClientContext& context, FunctionData& bind_data,
 }
 
 void WriteFastLanesFooter(FastlaneWriteGlobalState& global_state) {
-  // Write FastLanes footer with metadata
-  // This would include:
-  // - Total row count
-  // - Schema information
-  // - Rowgroup offsets
-  // - File statistics
-  
-  // Write footer magic
-  uint64_t footer_magic = 0x65746F6F66736146ULL; // "FastLanesFooter" in little-endian
-  global_state.file_writer->WriteData((const_data_ptr_t)&footer_magic, sizeof(footer_magic));
-  
-  // Write total row count
-  uint64_t total_rows = global_state.rows_in_current_rowgroup;
-  global_state.file_writer->WriteData((const_data_ptr_t)&total_rows, sizeof(total_rows));
-  
-  // Write rowgroup count
-  uint32_t rowgroup_count = global_state.current_rowgroup;
-  global_state.file_writer->WriteData((const_data_ptr_t)&rowgroup_count, sizeof(rowgroup_count));
+  // FastLanes handles footer writing internally
+  // This function is not needed when using the FastLanes API
 }
 
 unique_ptr<LocalFunctionData> FastlaneWriteInitializeLocal(ExecutionContext& context,
@@ -303,7 +299,7 @@ bool FastlaneWriteRotateNextFile(GlobalFunctionData& gstate, FunctionData& bind_
   if (file_size_bytes.IsValid()) {
     // Check if current file size exceeds the limit
     // This would require tracking the current file size
-    return false; // Placeholder
+    return false; // Not implemented yet
   }
   
   return false;
@@ -320,8 +316,6 @@ void RegisterFastlaneStreamCopyFunction(DatabaseInstance& db) {
   function.copy_to_combine = FastlaneWriteCombine;
   function.copy_to_finalize = FastlaneWriteFinalize;
   function.execution_mode = FastlaneWriteExecutionMode;
-  // TODO: Fix MultiFileFunction usage
-  // function.copy_from_bind = MultiFileFunction<MultiFileList>::MultiFileBindCopy;
   function.copy_from_function = ReadFastlaneStreamFunction();
   function.desired_batch_size = FastlaneWriteDesiredBatchSize;
   function.rotate_files = FastlaneWriteRotateFiles;

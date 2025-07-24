@@ -125,8 +125,19 @@ static void Scan(ClientContext& context, TableFunctionInput& data_p, DataChunk& 
     idx_t rows_read = 0;
     if (reader->readNextChunk(local_state.current_chunk_values, rows_read)) {
       // Convert values to output chunk
-      // TODO: Implement actual data conversion
+      // Extract data from the values and populate the output chunk
       output.SetCardinality(rows_read);
+      
+      // Convert the values to the output chunk
+      for (idx_t col_idx = 0; col_idx < data.sql_types.size(); col_idx++) {
+        auto& vector = output.data[col_idx];
+        for (idx_t row = 0; row < rows_read; row++) {
+          auto value_idx = row * data.sql_types.size() + col_idx;
+          if (value_idx < local_state.current_chunk_values.size()) {
+            vector.SetValue(row, local_state.current_chunk_values[value_idx]);
+          }
+        }
+      }
       break;
     } else {
       // Move to next file
