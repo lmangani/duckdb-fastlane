@@ -8,15 +8,25 @@ set(TARGET_NAME fastlane)
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
 find_package(OpenSSL REQUIRED)
 
+# Check if we can build FastLanes (requires Clang)
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "FastLanes extension requires Clang compiler. Current compiler: ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+# Check if we have the FastLanes submodule
+if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt")
+    message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
+endif()
+
 # Add FastLanes library from submodule
 add_subdirectory(third_party/fastlanes)
+include_directories(third_party/fastlanes/src/include)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
 include_directories(src/include)
-include_directories(third_party/fastlanes/src/include)
 
 set(EXTENSION_SOURCES 
     src/fastlane_extension.cpp
@@ -29,11 +39,9 @@ set(EXTENSION_SOURCES
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
-# Link OpenSSL and FastLanes in both the static library as the loadable extension
+# Link OpenSSL and FastLanes
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
-
-# Add FastLanes compile definitions
 target_compile_definitions(${EXTENSION_NAME} PRIVATE FLS_STATIC)
 target_compile_definitions(${LOADABLE_EXTENSION_NAME} PRIVATE FLS_STATIC)
 
