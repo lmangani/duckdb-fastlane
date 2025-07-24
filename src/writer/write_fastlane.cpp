@@ -110,7 +110,7 @@ void SerializeFastlaneData(const WriteFastlaneLocalState& local_state,
   
   // Allocate buffer
   buffer_size = total_size;
-  fastlane_buffer = make_uniq<uint8_t[]>(buffer_size);
+  fastlane_buffer = std::make_unique<uint8_t[]>(buffer_size);
   uint8_t* buffer_ptr = fastlane_buffer.get();
   
   // Write FastLanes magic bytes
@@ -169,7 +169,7 @@ void SerializeColumnData(const Vector& vector,
   // Convert DuckDB data to FastLanes format
   switch (fastlanes_type) {
     case BOOLEAN: {
-      auto bool_data = static_cast<bool*>(buffer_ptr);
+      auto bool_data = reinterpret_cast<bool*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
         bool_data[i] = value.GetValue<bool>();
@@ -177,7 +177,7 @@ void SerializeColumnData(const Vector& vector,
       break;
     }
     case INT32: {
-      auto int_data = static_cast<int32_t*>(buffer_ptr);
+      auto int_data = reinterpret_cast<int32_t*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
         int_data[i] = value.GetValue<int32_t>();
@@ -185,7 +185,7 @@ void SerializeColumnData(const Vector& vector,
       break;
     }
     case INT64: {
-      auto int_data = static_cast<int64_t*>(buffer_ptr);
+      auto int_data = reinterpret_cast<int64_t*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
         int_data[i] = value.GetValue<int64_t>();
@@ -193,7 +193,7 @@ void SerializeColumnData(const Vector& vector,
       break;
     }
     case DOUBLE: {
-      auto double_data = static_cast<double*>(buffer_ptr);
+      auto double_data = reinterpret_cast<double*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
         double_data[i] = value.GetValue<double>();
@@ -201,7 +201,7 @@ void SerializeColumnData(const Vector& vector,
       break;
     }
     case STR: {
-      auto str_data = static_cast<char**>(buffer_ptr);
+      auto str_data = reinterpret_cast<char**>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
         if (value.IsNull()) {
@@ -276,8 +276,9 @@ OperatorFinalizeResultType WriteFastlaneFunction::FunctionFinal(ExecutionContext
 }
 
 TableFunction WriteFastlaneFunction::GetFunction() {
-  TableFunction write_fastlane("write_fastlane", {LogicalType::VARCHAR}, Function, Bind, InitGlobal, InitLocal);
-  write_fastlane.function_final = FunctionFinal;
+  TableFunction write_fastlane("write_fastlane", {LogicalType::TABLE}, nullptr, Bind, InitGlobal, InitLocal);
+  write_fastlane.in_out_function = Function;
+  write_fastlane.in_out_function_final = FunctionFinal;
   return write_fastlane;
 }
 

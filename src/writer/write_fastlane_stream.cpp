@@ -15,23 +15,6 @@ namespace ext_fastlane {
 
 namespace {
 
-// Forward declarations
-void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
-                             FastlaneWriteLocalState& local_state,
-                             const FastlaneWriteBindData& bind_data);
-void WriteRowgroupHeader(FastlaneWriteGlobalState& global_state,
-                        FastlaneWriteLocalState& local_state,
-                        const FastlaneWriteBindData& bind_data);
-void WriteRowgroupData(FastlaneWriteGlobalState& global_state,
-                      FastlaneWriteLocalState& local_state,
-                      const FastlaneWriteBindData& bind_data);
-void WriteColumnData(FastlaneWriteGlobalState& global_state,
-                    FastlaneWriteLocalState& local_state,
-                    idx_t col_idx,
-                    const LogicalType& logical_type,
-                    FastLanesDataType fastlanes_type);
-void WriteFastLanesFooter(FastlaneWriteGlobalState& global_state);
-
 struct FastlaneWriteBindData : public TableFunctionData {
   vector<LogicalType> sql_types;
   vector<string> column_names;
@@ -62,6 +45,23 @@ struct FastlaneWriteLocalState : public LocalFunctionData {
   ColumnDataCollection buffer;
   ColumnDataAppendState append_state;
 };
+
+// Forward declarations
+void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
+                             FastlaneWriteLocalState& local_state,
+                             const FastlaneWriteBindData& bind_data);
+void WriteRowgroupHeader(FastlaneWriteGlobalState& global_state,
+                        FastlaneWriteLocalState& local_state,
+                        const FastlaneWriteBindData& bind_data);
+void WriteRowgroupData(FastlaneWriteGlobalState& global_state,
+                      FastlaneWriteLocalState& local_state,
+                      const FastlaneWriteBindData& bind_data);
+void WriteColumnData(FastlaneWriteGlobalState& global_state,
+                    FastlaneWriteLocalState& local_state,
+                    idx_t col_idx,
+                    const LogicalType& logical_type,
+                    FastLanesDataType fastlanes_type);
+void WriteFastLanesFooter(FastlaneWriteGlobalState& global_state);
 
 unique_ptr<FunctionData> FastlaneWriteBind(ClientContext& context,
                                           CopyFunctionBindInput& input,
@@ -213,7 +213,7 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
                     const LogicalType& logical_type,
                     FastLanesDataType fastlanes_type) {
   // Get the column data from the buffer
-  auto& chunk = local_state.buffer.GetChunk(0, 0); // Assuming single chunk for simplicity
+  auto& chunk = local_state.buffer.GetChunk(0); // Assuming single chunk for simplicity
   auto& vector = chunk.data[col_idx];
   
   // Convert and write the data
