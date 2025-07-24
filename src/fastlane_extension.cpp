@@ -33,15 +33,30 @@ struct FastlaneVersion {
 };
 
 void LoadInternal(DatabaseInstance& db) {
-  // Register version function
-  FastlaneVersion::Register(db);
+  // Debug output to see if extension is loading
+  std::cout << "FastLanes Extension: Loading..." << std::endl;
   
-  // Register table functions
-  ext_fastlane::RegisterReadFastlaneStream(db);
-  ext_fastlane::WriteFastlaneFunction::RegisterWriteFastlaneFunction(db);
-  
-  // Register copy functions
-  ext_fastlane::RegisterFastlaneStreamCopyFunction(db);
+  try {
+    // Register version function
+    std::cout << "FastLanes Extension: Registering version function..." << std::endl;
+    FastlaneVersion::Register(db);
+    
+    // Register table functions
+    std::cout << "FastLanes Extension: Registering read_fastlane function..." << std::endl;
+    ext_fastlane::RegisterReadFastlaneStream(db);
+    
+    std::cout << "FastLanes Extension: Registering write_fastlane function..." << std::endl;
+    ext_fastlane::WriteFastlaneFunction::RegisterWriteFastlaneFunction(db);
+    
+    // Register copy functions
+    std::cout << "FastLanes Extension: Registering copy functions..." << std::endl;
+    ext_fastlane::RegisterFastlaneStreamCopyFunction(db);
+    
+    std::cout << "FastLanes Extension: Loaded successfully!" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "FastLanes Extension: Error loading: " << e.what() << std::endl;
+    throw;
+  }
 }
 
 }  // namespace
@@ -67,6 +82,7 @@ std::string FastlaneExtension::Version() const {
 extern "C" {
 
 DUCKDB_EXTENSION_API void fastlane_init(duckdb::DatabaseInstance& db) {
+  std::cout << "FastLanes Extension: fastlane_init called" << std::endl;
   duckdb::DuckDB db_wrapper(db);
   db_wrapper.LoadExtension<duckdb::FastlaneExtension>();
 }

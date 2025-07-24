@@ -33,12 +33,23 @@ ExternalProject_Add(
         -DCMAKE_CXX_COMPILER=${CLANG_CXX}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
-    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install/lib/libFastLanes.a
+        -DFLS_BUILD_SHARED_LIBS=OFF
+    BUILD_BYPRODUCTS 
+        ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
+        ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so
 )
 
 # Set up FastLanes include and library paths
 set(FASTLANES_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/src/include)
-set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install/lib/libFastLanes.a)
+
+# Try to find the library in the build directory
+if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a)
+    set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a)
+elseif (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so)
+    set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so)
+else()
+    message(FATAL_ERROR "FastLanes library not found in build directory")
+endif()
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
