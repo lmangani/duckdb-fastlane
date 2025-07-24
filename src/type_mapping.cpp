@@ -10,45 +10,44 @@ namespace ext_fastlane {
 FastLanesDataType TypeMapping::DuckDBToFastLanes(const LogicalType& duckdb_type) {
   switch (duckdb_type.id()) {
     case LogicalTypeId::BOOLEAN:
-      return FastLanesDataType::BOOLEAN;
+      return data_t::BOOLEAN;
     case LogicalTypeId::TINYINT:
-      return FastLanesDataType::INT8;
+      return data_t::INT8;
     case LogicalTypeId::SMALLINT:
-      return FastLanesDataType::INT16;
+      return data_t::INT16;
     case LogicalTypeId::INTEGER:
-      return FastLanesDataType::INT32;
+      return data_t::INT32;
     case LogicalTypeId::BIGINT:
-      return FastLanesDataType::INT64;
+      return data_t::INT64;
     case LogicalTypeId::UTINYINT:
-      return FastLanesDataType::UINT8;
+      return data_t::UINT8;
     case LogicalTypeId::USMALLINT:
-      return FastLanesDataType::UINT16;
+      return data_t::UINT16;
     case LogicalTypeId::UINTEGER:
-      return FastLanesDataType::UINT32;
+      return data_t::UINT32;
     case LogicalTypeId::UBIGINT:
-      return FastLanesDataType::UINT64;
+      return data_t::UINT64;
     case LogicalTypeId::FLOAT:
-      return FastLanesDataType::FLOAT;
+      return data_t::FLOAT;
     case LogicalTypeId::DOUBLE:
-      return FastLanesDataType::DOUBLE;
+      return data_t::DOUBLE;
     case LogicalTypeId::VARCHAR:
     case LogicalTypeId::CHAR:
-      return FastLanesDataType::STR;
+      return data_t::STR;
     case LogicalTypeId::DATE:
-      return FastLanesDataType::DATE;
+      return data_t::DATE;
     case LogicalTypeId::BLOB:
     case LogicalTypeId::BIT:
-      return FastLanesDataType::BYTE_ARRAY;
+      return data_t::BYTE_ARRAY;
     case LogicalTypeId::LIST:
-      return FastLanesDataType::LIST;
+      return data_t::LIST;
     case LogicalTypeId::STRUCT:
-      return FastLanesDataType::STRUCT;
+      return data_t::STRUCT;
     case LogicalTypeId::MAP:
-      return FastLanesDataType::MAP;
+      return data_t::MAP;
     case LogicalTypeId::TIMESTAMP:
     case LogicalTypeId::TIMESTAMP_MS:
     case LogicalTypeId::TIMESTAMP_NS:
-    case LogicalTypeId::TIMESTAMP_S:
     case LogicalTypeId::TIME:
     case LogicalTypeId::TIME_TZ:
     case LogicalTypeId::TIMESTAMP_TZ:
@@ -56,50 +55,49 @@ FastLanesDataType TypeMapping::DuckDBToFastLanes(const LogicalType& duckdb_type)
     case LogicalTypeId::HUGEINT:
     case LogicalTypeId::UUID:
     case LogicalTypeId::DECIMAL:
-    case LogicalTypeId::JSON:
     default:
-      return FastLanesDataType::FALLBACK;
+      return data_t::FALLBACK;
   }
 }
 
 LogicalType TypeMapping::FastLanesToDuckDB(FastLanesDataType fastlanes_type) {
   switch (fastlanes_type) {
-    case FastLanesDataType::BOOLEAN:
+    case data_t::BOOLEAN:
       return LogicalType::BOOLEAN;
-    case FastLanesDataType::INT8:
+    case data_t::INT8:
       return LogicalType::TINYINT;
-    case FastLanesDataType::INT16:
+    case data_t::INT16:
       return LogicalType::SMALLINT;
-    case FastLanesDataType::INT32:
+    case data_t::INT32:
       return LogicalType::INTEGER;
-    case FastLanesDataType::INT64:
+    case data_t::INT64:
       return LogicalType::BIGINT;
-    case FastLanesDataType::UINT8:
+    case data_t::UINT8:
       return LogicalType::UTINYINT;
-    case FastLanesDataType::UINT16:
+    case data_t::UINT16:
       return LogicalType::USMALLINT;
-    case FastLanesDataType::UINT32:
+    case data_t::UINT32:
       return LogicalType::UINTEGER;
-    case FastLanesDataType::UINT64:
+    case data_t::UINT64:
       return LogicalType::UBIGINT;
-    case FastLanesDataType::FLOAT:
+    case data_t::FLOAT:
       return LogicalType::FLOAT;
-    case FastLanesDataType::DOUBLE:
+    case data_t::DOUBLE:
       return LogicalType::DOUBLE;
-    case FastLanesDataType::STR:
+    case data_t::STR:
       return LogicalType::VARCHAR;
-    case FastLanesDataType::DATE:
+    case data_t::DATE:
       return LogicalType::DATE;
-    case FastLanesDataType::BYTE_ARRAY:
+    case data_t::BYTE_ARRAY:
       return LogicalType::BLOB;
-    case FastLanesDataType::LIST:
+    case data_t::LIST:
       return LogicalType::LIST(LogicalType::VARCHAR); // Default to list of strings
-    case FastLanesDataType::STRUCT:
+    case data_t::STRUCT:
       return LogicalType::STRUCT({}); // Empty struct
-    case FastLanesDataType::MAP:
+    case data_t::MAP:
       return LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR); // Default map
-    case FastLanesDataType::INVALID:
-    case FastLanesDataType::FALLBACK:
+    case data_t::INVALID:
+    case data_t::FALLBACK:
     default:
       return LogicalType::VARCHAR; // Default fallback
   }
@@ -107,32 +105,32 @@ LogicalType TypeMapping::FastLanesToDuckDB(FastLanesDataType fastlanes_type) {
 
 uint32_t TypeMapping::GetFastLanesTypeSize(FastLanesDataType type) {
   switch (type) {
-    case FastLanesDataType::BOOLEAN:
+    case data_t::BOOLEAN:
       return sizeof(bool);
-    case FastLanesDataType::INT8:
-    case FastLanesDataType::UINT8:
+    case data_t::INT8:
+    case data_t::UINT8:
       return sizeof(int8_t);
-    case FastLanesDataType::INT16:
-    case FastLanesDataType::UINT16:
+    case data_t::INT16:
+    case data_t::UINT16:
       return sizeof(int16_t);
-    case FastLanesDataType::INT32:
-    case FastLanesDataType::UINT32:
-    case FastLanesDataType::FLOAT:
+    case data_t::INT32:
+    case data_t::UINT32:
+    case data_t::FLOAT:
       return sizeof(int32_t);
-    case FastLanesDataType::INT64:
-    case FastLanesDataType::UINT64:
-    case FastLanesDataType::DOUBLE:
+    case data_t::INT64:
+    case data_t::UINT64:
+    case data_t::DOUBLE:
       return sizeof(int64_t);
-    case FastLanesDataType::DATE:
+    case data_t::DATE:
       return sizeof(int32_t); // Date is typically stored as days since epoch
-    case FastLanesDataType::STR:
-    case FastLanesDataType::BYTE_ARRAY:
-    case FastLanesDataType::LIST:
-    case FastLanesDataType::STRUCT:
-    case FastLanesDataType::MAP:
+    case data_t::STR:
+    case data_t::BYTE_ARRAY:
+    case data_t::LIST:
+    case data_t::STRUCT:
+    case data_t::MAP:
       return sizeof(char*); // Pointer to string/binary data
-    case FastLanesDataType::INVALID:
-    case FastLanesDataType::FALLBACK:
+    case data_t::INVALID:
+    case data_t::FALLBACK:
     default:
       return sizeof(char*); // Default to pointer size
   }
@@ -140,8 +138,8 @@ uint32_t TypeMapping::GetFastLanesTypeSize(FastLanesDataType type) {
 
 bool TypeMapping::IsSupported(const LogicalType& duckdb_type) {
   auto fastlanes_type = DuckDBToFastLanes(duckdb_type);
-  return fastlanes_type != FastLanesDataType::INVALID && 
-         fastlanes_type != FastLanesDataType::FALLBACK;
+  return fastlanes_type != data_t::INVALID && 
+         fastlanes_type != data_t::FALLBACK;
 }
 
 }  // namespace ext_fastlane
