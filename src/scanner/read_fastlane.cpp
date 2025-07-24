@@ -137,11 +137,12 @@ static void Scan(ClientContext& context, TableFunctionInput& data_p, DataChunk& 
 }
 
 TableFunction ReadFastlaneStreamFunction() {
-  MultiFileFunction<MultiFileList> read_fastlane("read_fastlane");
+  TableFunction read_fastlane("read_fastlane", {LogicalType::VARCHAR}, Scan, Bind, InitGlobal, InitLocal);
   read_fastlane.projection_pushdown = true;
   read_fastlane.filter_pushdown = false;
   read_fastlane.filter_prune = false;
-  return static_cast<TableFunction>(read_fastlane);
+  read_fastlane.named_parameters["auto_detect"] = LogicalType::BOOLEAN;
+  return read_fastlane;
 }
 
 void RegisterReadFastlaneStream(DatabaseInstance& db) {
