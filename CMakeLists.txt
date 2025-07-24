@@ -3,10 +3,6 @@ cmake_minimum_required(VERSION 3.5)
 # Set extension name here
 set(TARGET_NAME fastlane)
 
-# Disable dependency scanning globally for this extension
-set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
-set(CMAKE_C_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
-
 # DuckDB's extension distribution supports vcpkg. As such, dependencies can be added in ./vcpkg.json and then
 # used in cmake with find_package. Feel free to remove or replace with other dependencies.
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
@@ -17,22 +13,7 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt
     message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
 endif()
 
-# Find Clang compilers
-find_program(CLANG_C NAMES clang)
-find_program(CLANG_CXX NAMES clang++)
-
-if (NOT CLANG_C OR NOT CLANG_CXX)
-    message(FATAL_ERROR "Clang compilers not found. FastLanes requires Clang.")
-endif()
-
-# Get number of CPU cores for parallel build
-include(ProcessorCount)
-ProcessorCount(NUM_CORES)
-if (NUM_CORES EQUAL 0)
-    set(NUM_CORES 1)
-endif()
-
-# Build FastLanes separately with Clang using ExternalProject
+# Build FastLanes using its own build system
 include(ExternalProject)
 
 ExternalProject_Add(
@@ -40,18 +21,9 @@ ExternalProject_Add(
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
     CMAKE_ARGS
-        -DCMAKE_C_COMPILER=${CLANG_C}
-        -DCMAKE_CXX_COMPILER=${CLANG_CXX}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
         -DFLS_BUILD_SHARED_LIBS=OFF
-        -DCMAKE_CXX_STANDARD=20
-        -DCMAKE_CXX_STANDARD_REQUIRED=ON
-        -DCMAKE_CXX_FLAGS="-std=c++20 -stdlib=libc++"
-        -DCMAKE_C_FLAGS="-std=c17"
-        -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=OFF
-        -DCMAKE_C_COMPILER_CLANG_SCAN_DEPS=OFF
-    BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NUM_CORES}
     BUILD_BYPRODUCTS 
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so
@@ -65,7 +37,6 @@ add_library(FastLanes STATIC IMPORTED)
 set_target_properties(FastLanes PROPERTIES
     IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
     INTERFACE_INCLUDE_DIRECTORIES ${FASTLANES_INCLUDE_DIR}
-    INTERFACE_COMPILE_FEATURES cxx_std_20
 )
 
 # Add dependency to ensure FastLanes is built before our extension
