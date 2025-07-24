@@ -1,0 +1,76 @@
+-- Test FastLanes Extension
+-- This file tests the basic functionality of the FastLanes extension
+
+-- Load the extension
+LOAD fastlane;
+
+-- Test version function
+SELECT fastlane_version();
+
+-- Test read_fastlane function with non-existent file (should not crash)
+SELECT * FROM read_fastlane('nonexistent.fls') LIMIT 0;
+
+-- Test read_fastlane function with empty result
+SELECT * FROM read_fastlane('test.fls') LIMIT 0;
+
+-- Test write_fastlane function with simple data
+CREATE TABLE test_table AS SELECT 1 as id, 'test' as name, 3.14 as value;
+SELECT * FROM write_fastlane(SELECT * FROM test_table);
+
+-- Test write_fastlane function with different data types
+CREATE TABLE test_types AS 
+SELECT 
+    42 as int_val,
+    1234567890123456789 as bigint_val,
+    3.14159 as double_val,
+    'hello world' as string_val,
+    true as bool_val,
+    DATE '2023-01-01' as date_val;
+    
+SELECT * FROM write_fastlane(SELECT * FROM test_types);
+
+-- Test write_fastlane function with empty table
+CREATE TABLE empty_table AS SELECT 1 as id WHERE false;
+SELECT * FROM write_fastlane(SELECT * FROM empty_table);
+
+-- Test write_fastlane function with complex query
+SELECT * FROM write_fastlane(
+    SELECT 
+        id,
+        name,
+        value * 2 as doubled_value
+    FROM test_table 
+    WHERE value > 0
+);
+
+-- Test COPY TO functionality (equivalent to nanoarrow's COPY TO "test.arrows")
+COPY (SELECT 42 as foofy, 'string' as stringy) TO "test.fls";
+
+-- Test COPY TO with format specification
+COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_2.fls" (FORMAT FLS);
+
+-- Test COPY TO with FastLanes format
+COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_3.fastlane" (FORMAT FASTLANE);
+
+-- Test COPY TO with options
+COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_4.fls" (FORMAT FLS, ROW_GROUP_SIZE 1000);
+
+-- Test replacement scan for .fls files (commented out as files don't exist)
+-- SELECT * FROM 'test.fls' LIMIT 0;
+
+-- Test multiple file paths
+SELECT * FROM read_fastlane(['file1.fls', 'file2.fls']) LIMIT 0;
+
+-- Test projection pushdown (should work even if no data)
+SELECT id, name FROM read_fastlane('test.fls') LIMIT 0;
+
+-- Test glob pattern (equivalent to nanoarrow's FROM read_arrow('*.arrows'))
+SELECT * FROM read_fastlane('*.fls') LIMIT 0;
+
+-- Test list of files (equivalent to nanoarrow's FROM read_arrow(['test.arrows','test_2.arrows']))
+SELECT * FROM read_fastlane(['test.fls','test_2.fls']) LIMIT 0;
+
+-- Clean up
+DROP TABLE test_table;
+DROP TABLE test_types;
+DROP TABLE empty_table;
