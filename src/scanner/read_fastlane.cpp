@@ -23,6 +23,9 @@ namespace duckdb {
 
 namespace ext_fastlane {
 
+// Forward declarations
+static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, const string& table_name, optional_ptr<ReplacementScanData> data);
+
 struct ReadFastlaneBindData : public TableFunctionData {
   vector<string> files;
   vector<LogicalType> sql_types;
