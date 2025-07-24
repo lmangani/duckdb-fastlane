@@ -11,6 +11,13 @@ namespace duckdb {
 
 namespace ext_fastlane {
 
+// Forward declarations
+void SerializeColumnData(const Vector& vector, 
+                        const LogicalType& logical_type,
+                        FastLanesDataType fastlanes_type,
+                        uint8_t* buffer_ptr,
+                        idx_t row_count);
+
 struct WriteFastlaneFunctionData : public TableFunctionData {
   WriteFastlaneFunctionData() = default;
   vector<LogicalType> logical_types;
@@ -103,7 +110,7 @@ void SerializeFastlaneData(const WriteFastlaneLocalState& local_state,
   
   // Allocate buffer
   buffer_size = total_size;
-  fastlane_buffer = std::make_unique<uint8_t[]>(buffer_size);
+  fastlane_buffer = make_uniq<uint8_t[]>(buffer_size);
   uint8_t* buffer_ptr = fastlane_buffer.get();
   
   // Write FastLanes magic bytes
@@ -161,7 +168,7 @@ void SerializeColumnData(const Vector& vector,
                         idx_t row_count) {
   // Convert DuckDB data to FastLanes format
   switch (fastlanes_type) {
-    case FastLanesDataType::BOOLEAN: {
+    case BOOLEAN: {
       auto bool_data = static_cast<bool*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
@@ -169,7 +176,7 @@ void SerializeColumnData(const Vector& vector,
       }
       break;
     }
-    case FastLanesDataType::INT32: {
+    case INT32: {
       auto int_data = static_cast<int32_t*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
@@ -177,7 +184,7 @@ void SerializeColumnData(const Vector& vector,
       }
       break;
     }
-    case FastLanesDataType::INT64: {
+    case INT64: {
       auto int_data = static_cast<int64_t*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
@@ -185,7 +192,7 @@ void SerializeColumnData(const Vector& vector,
       }
       break;
     }
-    case FastLanesDataType::DOUBLE: {
+    case DOUBLE: {
       auto double_data = static_cast<double*>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
@@ -193,7 +200,7 @@ void SerializeColumnData(const Vector& vector,
       }
       break;
     }
-    case FastLanesDataType::STR: {
+    case STR: {
       auto str_data = static_cast<char**>(buffer_ptr);
       for (idx_t i = 0; i < row_count; i++) {
         auto value = vector.GetValue(i);
@@ -269,11 +276,7 @@ OperatorFinalizeResultType WriteFastlaneFunction::FunctionFinal(ExecutionContext
 }
 
 TableFunction WriteFastlaneFunction::GetFunction() {
-  TableFunction write_fastlane("write_fastlane");
-  write_fastlane.bind = Bind;
-  write_fastlane.init_local = InitLocal;
-  write_fastlane.init_global = InitGlobal;
-  write_fastlane.function = Function;
+  TableFunction write_fastlane("write_fastlane", {LogicalType::VARCHAR}, Function, Bind, InitGlobal, InitLocal);
   write_fastlane.function_final = FunctionFinal;
   return write_fastlane;
 }

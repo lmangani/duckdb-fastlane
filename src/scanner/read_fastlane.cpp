@@ -1,6 +1,7 @@
 #include "table_function/read_fastlane.hpp"
 #include "fastlanes_facade.hpp"
 #include "type_mapping.hpp"
+#include "duckdb/main/extension_util.hpp"
 
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/multi_file_reader.hpp"
@@ -18,6 +19,7 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/types/column_data_collection.hpp"
 #include "duckdb/common/types/vector.hpp"
+#include "duckdb/parser/tableref/table_function_ref.hpp"
 
 namespace duckdb {
 
@@ -143,7 +145,7 @@ void RegisterReadFastlaneStream(DatabaseInstance& db) {
   config.replacement_scans.emplace_back(ReadFastlaneReplacementScan);
 }
 
-static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, const string& table_name, ReplacementScanData* data) {
+static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, const string& table_name, optional_ptr<ReplacementScanData> data) {
   auto lower_name = StringUtil::Lower(table_name);
   if (!StringUtil::EndsWith(lower_name, ".fls") && !StringUtil::EndsWith(lower_name, ".fastlane")) {
     return nullptr;

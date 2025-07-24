@@ -15,6 +15,23 @@ namespace ext_fastlane {
 
 namespace {
 
+// Forward declarations
+void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
+                             FastlaneWriteLocalState& local_state,
+                             const FastlaneWriteBindData& bind_data);
+void WriteRowgroupHeader(FastlaneWriteGlobalState& global_state,
+                        FastlaneWriteLocalState& local_state,
+                        const FastlaneWriteBindData& bind_data);
+void WriteRowgroupData(FastlaneWriteGlobalState& global_state,
+                      FastlaneWriteLocalState& local_state,
+                      const FastlaneWriteBindData& bind_data);
+void WriteColumnData(FastlaneWriteGlobalState& global_state,
+                    FastlaneWriteLocalState& local_state,
+                    idx_t col_idx,
+                    const LogicalType& logical_type,
+                    FastLanesDataType fastlanes_type);
+void WriteFastLanesFooter(FastlaneWriteGlobalState& global_state);
+
 struct FastlaneWriteBindData : public TableFunctionData {
   vector<LogicalType> sql_types;
   vector<string> column_names;
@@ -128,7 +145,8 @@ void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
   // Create a FastLanes rowgroup from the buffer
   try {
     // Use FastLanes C++ API to write the rowgroup
-    auto connection = fastlanes::Connection();
+    // Use the facade instead of direct FastLanes connection
+    // auto connection = fastlanes::Connection();
     
     // Set rowgroup size
     connection.set_n_vectors_per_rowgroup(bind_data.row_group_size);
@@ -195,12 +213,12 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
                     const LogicalType& logical_type,
                     FastLanesDataType fastlanes_type) {
   // Get the column data from the buffer
-  auto& chunk = local_state.buffer.GetChunk(0); // Assuming single chunk for simplicity
+  auto& chunk = local_state.buffer.GetChunk(0, 0); // Assuming single chunk for simplicity
   auto& vector = chunk.data[col_idx];
   
   // Convert and write the data
   switch (fastlanes_type) {
-    case FastLanesDataType::BOOLEAN: {
+    case BOOLEAN: {
       for (idx_t i = 0; i < chunk.size(); i++) {
         auto value = vector.GetValue(i);
         bool bool_val = value.GetValue<bool>();
@@ -208,7 +226,7 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
       }
       break;
     }
-    case FastLanesDataType::INT32: {
+    case INT32: {
       for (idx_t i = 0; i < chunk.size(); i++) {
         auto value = vector.GetValue(i);
         int32_t int_val = value.GetValue<int32_t>();
@@ -216,7 +234,7 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
       }
       break;
     }
-    case FastLanesDataType::INT64: {
+    case INT64: {
       for (idx_t i = 0; i < chunk.size(); i++) {
         auto value = vector.GetValue(i);
         int64_t int_val = value.GetValue<int64_t>();
@@ -224,7 +242,7 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
       }
       break;
     }
-    case FastLanesDataType::DOUBLE: {
+    case DOUBLE: {
       for (idx_t i = 0; i < chunk.size(); i++) {
         auto value = vector.GetValue(i);
         double double_val = value.GetValue<double>();
@@ -232,7 +250,7 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
       }
       break;
     }
-    case FastLanesDataType::STR: {
+    case STR: {
       for (idx_t i = 0; i < chunk.size(); i++) {
         auto value = vector.GetValue(i);
         if (value.IsNull()) {
@@ -361,7 +379,7 @@ void RegisterFastlaneStreamCopyFunction(DatabaseInstance& db) {
   function.copy_to_combine = FastlaneWriteCombine;
   function.copy_to_finalize = FastlaneWriteFinalize;
   function.execution_mode = FastlaneWriteExecutionMode;
-  function.copy_from_bind = MultiFileFunction<MultiFileInfo>::MultiFileBindCopy;
+  function.copy_from_bind = MultiFileFunction<MultiFileList>::MultiFileBindCopy;
   function.copy_from_function = ReadFastlaneStreamFunction();
   function.desired_batch_size = FastlaneWriteDesiredBatchSize;
   function.rotate_files = FastlaneWriteRotateFiles;
