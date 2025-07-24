@@ -21,6 +21,13 @@ if (NOT CLANG_C OR NOT CLANG_CXX)
     message(FATAL_ERROR "Clang compilers not found. FastLanes requires Clang.")
 endif()
 
+# Get number of CPU cores for parallel build
+include(ProcessorCount)
+ProcessorCount(NUM_CORES)
+if (NUM_CORES EQUAL 0)
+    set(NUM_CORES 1)
+endif()
+
 # Build FastLanes separately with Clang using ExternalProject
 include(ExternalProject)
 
@@ -38,6 +45,7 @@ ExternalProject_Add(
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
         -DCMAKE_CXX_FLAGS="-std=c++20 -stdlib=libc++"
         -DCMAKE_C_FLAGS="-std=c17"
+    BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NUM_CORES}
     BUILD_BYPRODUCTS 
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so
