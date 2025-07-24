@@ -17,20 +17,18 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt
     message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
 endif()
 
-# Build FastLanes completely separately using its own build system
-include(ExternalProject)
-
-ExternalProject_Add(
-    fastlanes_external
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
-    CMAKE_ARGS
+# Build FastLanes using its own Makefile system
+add_custom_target(fastlanes_build
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
+        ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
         -DFLS_BUILD_SHARED_LIBS=OFF
-    BUILD_BYPRODUCTS 
-        ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
-        ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
+        ${CMAKE_COMMAND} --build . --parallel
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Building FastLanes using its own build system"
 )
 
 # Set up FastLanes include and library paths
@@ -44,7 +42,7 @@ set_target_properties(FastLanes PROPERTIES
 )
 
 # Add dependency to ensure FastLanes is built before our extension
-add_dependencies(FastLanes fastlanes_external)
+add_dependencies(FastLanes fastlanes_build)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
