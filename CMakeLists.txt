@@ -28,17 +28,17 @@ set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
+include_directories(src/include)
 include_directories(${FASTLANES_INCLUDE_DIR})
 
 # Extension sources including the C++20 facade
 set(EXTENSION_SOURCES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlane_extension.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/read_fastlane.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane_stream.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/type_mapping.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp
+    src/fastlane_extension.cpp
+    src/scanner/read_fastlane.cpp
+    src/writer/write_fastlane.cpp
+    src/writer/write_fastlane_stream.cpp
+    src/type_mapping.cpp
+    src/fastlanes_facade.cpp
 )
 
 # Build the extension with C++20 support for FastLanes
@@ -46,7 +46,7 @@ build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
 # Set C++20 for the facade source file specifically
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp PROPERTIES
+set_source_files_properties(src/fastlanes_facade.cpp PROPERTIES
     COMPILE_FEATURES cxx_std_20
 )
 
