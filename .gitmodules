@@ -6,3 +6,6 @@
 	path = extension-ci-tools
 	url = https://github.com/duckdb/extension-ci-tools
 	branch = main
+[submodule "third_party/fastlanes"]
+	path = third_party/fastlanes
+	url = https://github.com/cwida/FastLanes.git

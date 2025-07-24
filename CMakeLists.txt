@@ -8,20 +8,15 @@ set(TARGET_NAME fastlane)
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
 find_package(OpenSSL REQUIRED)
 
-# Add FastLanes library
-include(FetchContent)
-FetchContent_Declare(
-    fastlanes
-    GIT_REPOSITORY https://github.com/cwida/FastLanes.git
-    GIT_TAG dev
-)
-FetchContent_MakeAvailable(fastlanes)
+# Add FastLanes library from submodule
+add_subdirectory(third_party/fastlanes)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
 include_directories(src/include)
+include_directories(third_party/fastlanes/src/include)
 
 set(EXTENSION_SOURCES 
     src/fastlane_extension.cpp
@@ -35,8 +30,12 @@ build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
 # Link OpenSSL and FastLanes in both the static library as the loadable extension
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
+
+# Add FastLanes compile definitions
+target_compile_definitions(${EXTENSION_NAME} PRIVATE FLS_STATIC)
+target_compile_definitions(${LOADABLE_EXTENSION_NAME} PRIVATE FLS_STATIC)
 
 install(
   TARGETS ${EXTENSION_NAME}

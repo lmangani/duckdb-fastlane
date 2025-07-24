@@ -11,6 +11,11 @@
 
 // FastLanes includes
 #include "fastlanes.hpp"
+#include "fls/connection.hpp"
+#include "fls/reader/table_reader.hpp"
+#include "fls/reader/rowgroup_reader.hpp"
+#include "fls/table/table.hpp"
+#include "fls/table/rowgroup.hpp"
 
 namespace duckdb {
 
@@ -37,6 +42,8 @@ struct ReadFastlaneLocalState : public LocalTableFunctionState {
   unique_ptr<fastlanes::RowgroupReader> rowgroup_reader;
   idx_t current_chunk = 0;
   idx_t total_chunks = 0;
+  vector<fastlanes::data_t> column_types;
+  vector<string> column_names;
 };
 
 struct ReadFastlaneStream : TableFunction {
@@ -94,8 +101,7 @@ struct ReadFastlaneStream : TableFunction {
         // Get the first rowgroup to determine schema
         auto& first_rowgroup = table->GetRowgroup(0);
         
-        // TODO: Extract column names and types from the rowgroup
-        // For now, create a basic schema
+        // Extract column names and types from the rowgroup
         auto column_names = first_rowgroup.get_column_names();
         auto data_types = first_rowgroup.get_data_types();
         
@@ -159,9 +165,18 @@ struct ReadFastlaneStream : TableFunction {
         // Get the current rowgroup reader
         result->rowgroup_reader = global.table_reader->get_rowgroup_reader(global.current_rowgroup);
         
-        // TODO: Get actual chunk count from the rowgroup
-        // For now, assume one chunk per rowgroup
-        result->total_chunks = 1;
+        // Get column metadata from the rowgroup reader
+        if (result->rowgroup_reader) {
+          result->column_names = result->rowgroup_reader->get_column_names();
+          auto data_types = result->rowgroup_reader->get_data_types();
+          for (auto dt : data_types) {
+            result->column_types.push_back(static_cast<fastlanes::data_t>(dt));
+          }
+          
+          // Estimate chunk count based on rowgroup size
+          // FastLanes typically uses vectors of 1024 elements
+          result->total_chunks = 1; // For now, assume one chunk per rowgroup
+        }
       } catch (const std::exception& e) {
         // Handle error gracefully
         result->total_chunks = 0;
@@ -188,23 +203,132 @@ struct ReadFastlaneStream : TableFunction {
         local_state.rowgroup_reader = global_state.table_reader->get_rowgroup_reader(global_state.current_rowgroup);
         local_state.current_chunk = 0;
         local_state.total_chunks = 1; // Placeholder
+        
+        // Update column metadata for new rowgroup
+        if (local_state.rowgroup_reader) {
+          local_state.column_names = local_state.rowgroup_reader->get_column_names();
+          auto data_types = local_state.rowgroup_reader->get_data_types();
+          local_state.column_types.clear();
+          for (auto dt : data_types) {
+            local_state.column_types.push_back(static_cast<fastlanes::data_t>(dt));
+          }
+        }
       } catch (const std::exception& e) {
         output.SetCardinality(0);
         return OperatorResultType::FINISHED;
       }
     }
     
-    // TODO: Actually read data from FastLanes and populate the output chunk
-    // This would involve:
-    // 1. Getting the chunk data from the rowgroup reader
-    // 2. Converting FastLanes data types to DuckDB types
-    // 3. Populating the output DataChunk
+    // Read data from FastLanes and populate the output chunk
+    if (local_state.rowgroup_reader) {
+      try {
+        // Get chunk data from the rowgroup reader
+        auto chunk_data = local_state.rowgroup_reader->get_chunk(local_state.current_chunk);
+        
+        if (!chunk_data.empty()) {
+          // Process the chunk data and populate output
+          idx_t row_count = 0;
+          
+          // For each column, extract data from the chunk
+          for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
+            if (col_idx < chunk_data.size()) {
+              auto& column_data = chunk_data[col_idx];
+              if (column_data) {
+                // Convert FastLanes data to DuckDB format
+                ConvertFastLanesToDuckDB(column_data.get(), 
+                                        local_state.column_types[col_idx],
+                                        output.data[col_idx],
+                                        row_count);
+              }
+            }
+          }
+          
+          output.SetCardinality(row_count);
+          local_state.current_chunk++;
+          
+          return OperatorResultType::HAVE_MORE_OUTPUT;
+        }
+      } catch (const std::exception& e) {
+        // Handle error gracefully
+        output.SetCardinality(0);
+        local_state.current_chunk++;
+        return OperatorResultType::HAVE_MORE_OUTPUT;
+      }
+    }
     
-    // For now, create empty output
+    // No more data
     output.SetCardinality(0);
     local_state.current_chunk++;
     
     return OperatorResultType::HAVE_MORE_OUTPUT;
+  }
+
+private:
+  static void ConvertFastLanesToDuckDB(void* fastlanes_data, 
+                                       fastlanes::data_t data_type,
+                                       Vector& duckdb_vector,
+                                       idx_t& row_count) {
+    // This is a simplified conversion - in a real implementation,
+    // you would need to handle the specific FastLanes data layout
+    // and properly decode the data according to the FastLanes format
+    
+    switch (data_type) {
+      case fastlanes::data_t::BOOLEAN: {
+        auto bool_data = static_cast<bool*>(fastlanes_data);
+        auto& bool_vector = duckdb_vector.Cast<BooleanVector>();
+        for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
+          bool_vector.SetValue(i, Value::BOOLEAN(bool_data[i]));
+        }
+        row_count = STANDARD_VECTOR_SIZE;
+        break;
+      }
+      case fastlanes::data_t::INT32: {
+        auto int_data = static_cast<int32_t*>(fastlanes_data);
+        auto& int_vector = duckdb_vector.Cast<Vector>();
+        for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
+          int_vector.SetValue(i, Value::INTEGER(int_data[i]));
+        }
+        row_count = STANDARD_VECTOR_SIZE;
+        break;
+      }
+      case fastlanes::data_t::INT64: {
+        auto int_data = static_cast<int64_t*>(fastlanes_data);
+        auto& int_vector = duckdb_vector.Cast<Vector>();
+        for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
+          int_vector.SetValue(i, Value::BIGINT(int_data[i]));
+        }
+        row_count = STANDARD_VECTOR_SIZE;
+        break;
+      }
+      case fastlanes::data_t::DOUBLE: {
+        auto double_data = static_cast<double*>(fastlanes_data);
+        auto& double_vector = duckdb_vector.Cast<Vector>();
+        for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
+          double_vector.SetValue(i, Value::DOUBLE(double_data[i]));
+        }
+        row_count = STANDARD_VECTOR_SIZE;
+        break;
+      }
+      case fastlanes::data_t::STR: {
+        auto str_data = static_cast<char**>(fastlanes_data);
+        auto& string_vector = duckdb_vector.Cast<StringVector>();
+        for (idx_t i = 0; i < STANDARD_VECTOR_SIZE; i++) {
+          if (str_data[i]) {
+            string_vector.SetValue(i, Value(str_data[i]));
+          } else {
+            string_vector.SetValue(i, Value());
+          }
+        }
+        row_count = STANDARD_VECTOR_SIZE;
+        break;
+      }
+      default:
+        // For unsupported types, fill with NULL values
+        duckdb_vector.SetVectorType(VectorType::CONSTANT_VECTOR);
+        duckdb_vector.SetValue(0, Value());
+        row_count = 0;
+        break;
+    }
   }
 };
 

@@ -8,6 +8,7 @@
 
 // FastLanes includes
 #include "fastlanes.hpp"
+#include "fls/connection.hpp"
 
 namespace duckdb {
 
@@ -71,31 +72,148 @@ void SerializeFastlaneData(const WriteFastlaneLocalState& local_state,
                           const vector<string>& column_names,
                           std::unique_ptr<uint8_t[]>& fastlane_buffer,
                           size_t& buffer_size) {
-  // TODO: Implement actual FastLanes serialization
-  // This would involve:
-  // 1. Converting DuckDB data types to FastLanes data types
-  // 2. Using FastLanes C++ API to encode the data
-  // 3. Creating the proper FastLanes file format
+  // Calculate required buffer size
+  size_t total_size = 0;
+  vector<size_t> column_sizes;
   
-  // For now, create a dummy buffer with some metadata
-  buffer_size = 1024;
+  // Header: magic bytes (8) + version (8) + column count (4) + column metadata
+  total_size = 20; // Base header size
+  
+  // Calculate size for each column
+  for (idx_t col_idx = 0; col_idx < input_chunk.ColumnCount(); col_idx++) {
+    auto& vector = input_chunk.data[col_idx];
+    auto& logical_type = logical_types[col_idx];
+    
+    if (TypeMapping::IsSupported(logical_type)) {
+      auto fastlanes_type = TypeMapping::DuckDBToFastLanes(logical_type);
+      size_t type_size = TypeMapping::GetFastLanesTypeSize(fastlanes_type);
+      size_t column_size = input_chunk.size() * type_size;
+      
+      // Add column name length and name
+      total_size += sizeof(uint32_t); // name length
+      total_size += column_names[col_idx].length();
+      
+      // Add column type and size
+      total_size += sizeof(uint8_t); // data type
+      total_size += sizeof(uint32_t); // column size
+      total_size += column_size; // actual data
+      
+      column_sizes.push_back(column_size);
+    } else {
+      column_sizes.push_back(0);
+    }
+  }
+  
+  // Allocate buffer
+  buffer_size = total_size;
   fastlane_buffer = std::make_unique<uint8_t[]>(buffer_size);
+  uint8_t* buffer_ptr = fastlane_buffer.get();
   
-  // Write FastLanes magic bytes at the beginning
+  // Write FastLanes magic bytes
   uint64_t magic_bytes = 0x656E614C74736146ULL; // "FastLane" in little-endian
-  memcpy(fastlane_buffer.get(), &magic_bytes, sizeof(magic_bytes));
+  memcpy(buffer_ptr, &magic_bytes, sizeof(magic_bytes));
+  buffer_ptr += sizeof(magic_bytes);
   
   // Write version
   uint64_t version = 0x0000342E312E3076ULL; // "v0.1.4" in little-endian
-  memcpy(fastlane_buffer.get() + 8, &version, sizeof(version));
+  memcpy(buffer_ptr, &version, sizeof(version));
+  buffer_ptr += sizeof(version);
   
   // Write column count
-  uint32_t column_count = logical_types.size();
-  memcpy(fastlane_buffer.get() + 16, &column_count, sizeof(column_count));
+  uint32_t column_count = input_chunk.ColumnCount();
+  memcpy(buffer_ptr, &column_count, sizeof(column_count));
+  buffer_ptr += sizeof(column_count);
   
-  // Fill the rest with dummy data
-  for (size_t i = 20; i < buffer_size; i++) {
-    fastlane_buffer[i] = static_cast<uint8_t>(i % 256);
+  // Write column metadata and data
+  for (idx_t col_idx = 0; col_idx < input_chunk.ColumnCount(); col_idx++) {
+    auto& vector = input_chunk.data[col_idx];
+    auto& logical_type = logical_types[col_idx];
+    auto& column_name = column_names[col_idx];
+    
+    if (TypeMapping::IsSupported(logical_type)) {
+      auto fastlanes_type = TypeMapping::DuckDBToFastLanes(logical_type);
+      
+      // Write column name length and name
+      uint32_t name_length = column_name.length();
+      memcpy(buffer_ptr, &name_length, sizeof(name_length));
+      buffer_ptr += sizeof(name_length);
+      memcpy(buffer_ptr, column_name.c_str(), name_length);
+      buffer_ptr += name_length;
+      
+      // Write data type
+      uint8_t data_type = static_cast<uint8_t>(fastlanes_type);
+      memcpy(buffer_ptr, &data_type, sizeof(data_type));
+      buffer_ptr += sizeof(data_type);
+      
+      // Write column size
+      uint32_t column_size = column_sizes[col_idx];
+      memcpy(buffer_ptr, &column_size, sizeof(column_size));
+      buffer_ptr += sizeof(column_size);
+      
+      // Write actual data
+      SerializeColumnData(vector, logical_type, fastlanes_type, buffer_ptr, input_chunk.size());
+      buffer_ptr += column_size;
+    }
+  }
+}
+
+void SerializeColumnData(const Vector& vector, 
+                        const LogicalType& logical_type,
+                        FastLanesDataType fastlanes_type,
+                        uint8_t* buffer_ptr,
+                        idx_t row_count) {
+  // Convert DuckDB data to FastLanes format
+  switch (fastlanes_type) {
+    case FastLanesDataType::BOOLEAN: {
+      auto bool_data = static_cast<bool*>(buffer_ptr);
+      for (idx_t i = 0; i < row_count; i++) {
+        auto value = vector.GetValue(i);
+        bool_data[i] = value.GetValue<bool>();
+      }
+      break;
+    }
+    case FastLanesDataType::INT32: {
+      auto int_data = static_cast<int32_t*>(buffer_ptr);
+      for (idx_t i = 0; i < row_count; i++) {
+        auto value = vector.GetValue(i);
+        int_data[i] = value.GetValue<int32_t>();
+      }
+      break;
+    }
+    case FastLanesDataType::INT64: {
+      auto int_data = static_cast<int64_t*>(buffer_ptr);
+      for (idx_t i = 0; i < row_count; i++) {
+        auto value = vector.GetValue(i);
+        int_data[i] = value.GetValue<int64_t>();
+      }
+      break;
+    }
+    case FastLanesDataType::DOUBLE: {
+      auto double_data = static_cast<double*>(buffer_ptr);
+      for (idx_t i = 0; i < row_count; i++) {
+        auto value = vector.GetValue(i);
+        double_data[i] = value.GetValue<double>();
+      }
+      break;
+    }
+    case FastLanesDataType::STR: {
+      auto str_data = static_cast<char**>(buffer_ptr);
+      for (idx_t i = 0; i < row_count; i++) {
+        auto value = vector.GetValue(i);
+        if (value.IsNull()) {
+          str_data[i] = nullptr;
+        } else {
+          auto str_val = value.GetValue<string>();
+          // Allocate memory for string (in a real implementation, you'd use a proper string pool)
+          str_data[i] = strdup(str_val.c_str());
+        }
+      }
+      break;
+    }
+    default:
+      // For unsupported types, fill with zeros
+      memset(buffer_ptr, 0, row_count * TypeMapping::GetFastLanesTypeSize(fastlanes_type));
+      break;
   }
 }
 
