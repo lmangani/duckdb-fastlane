@@ -45,6 +45,8 @@ ExternalProject_Add(
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
         -DCMAKE_CXX_FLAGS="-std=c++20 -stdlib=libc++"
         -DCMAKE_C_FLAGS="-std=c17"
+        -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=OFF
+        -DCMAKE_C_COMPILER_CLANG_SCAN_DEPS=OFF
     BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NUM_CORES}
     BUILD_BYPRODUCTS 
         ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
