@@ -28,31 +28,39 @@ set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
-include_directories(src/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 include_directories(${FASTLANES_INCLUDE_DIR})
 
-# Extension sources including the C++20 facade
-set(EXTENSION_SOURCES 
-    src/fastlane_extension.cpp
-    src/scanner/read_fastlane.cpp
-    src/writer/write_fastlane.cpp
-    src/writer/write_fastlane_stream.cpp
-    src/type_mapping.cpp
-    src/fastlanes_facade.cpp
+# Separate sources for C++20 facade and standard DuckDB extension
+set(FASTLANES_FACADE_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp
 )
 
-# Build the extension with C++20 support for FastLanes
+set(EXTENSION_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlane_extension.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/read_fastlane.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane_stream.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/type_mapping.cpp
+)
+
+# Build the C++20 facade library
+add_library(fastlanes_facade STATIC ${FASTLANES_FACADE_SOURCES})
+set_target_properties(fastlanes_facade PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+target_link_libraries(fastlanes_facade FastLanes)
+target_compile_definitions(fastlanes_facade PRIVATE FLS_STATIC)
+
+# Build the main extension (standard DuckDB C++ version)
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
-# Set C++20 for the facade source file specifically
-set_source_files_properties(src/fastlanes_facade.cpp PROPERTIES
-    COMPILE_FEATURES cxx_std_20
-)
-
 # Link everything together
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto fastlanes_facade)
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto fastlanes_facade)
 target_compile_definitions(${EXTENSION_NAME} PRIVATE FLS_STATIC)
 target_compile_definitions(${LOADABLE_EXTENSION_NAME} PRIVATE FLS_STATIC)
 
