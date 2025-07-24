@@ -7,6 +7,10 @@ set(TARGET_NAME fastlane)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Disable dependency scanning globally
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
+set(CMAKE_C_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
+
 # DuckDB's extension distribution supports vcpkg. As such, dependencies can be added in ./vcpkg.json and then
 # used in cmake with find_package. Feel free to remove or replace with other dependencies.
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
@@ -63,6 +67,16 @@ set(EXTENSION_SOURCES
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
+
+# Set C++20 for our extension targets
+set_target_properties(${EXTENSION_NAME} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
+set_target_properties(${LOADABLE_EXTENSION_NAME} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
 
 # Link OpenSSL and FastLanes
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
