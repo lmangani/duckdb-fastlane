@@ -99,11 +99,7 @@ unique_ptr<GlobalFunctionData> FastlaneWriteInitializeGlobal(ClientContext& cont
   auto result = make_uniq<FastlaneWriteGlobalState>();
   result->connection = make_uniq<fastlanes::Connection>();
   result->file_path = file_path;
-  
-  // Initialize file writer
-  auto& fs = FileSystem::GetFileSystem(context);
-  result->file_writer = make_uniq<BufferedFileWriter>(fs, file_path);
-  
+  result->file_writer = make_uniq<BufferedFileWriter>(FileSystem::GetFileSystem(context), file_path);
   return std::move(result);
 }
 
