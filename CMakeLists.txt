@@ -1,3 +1,7 @@
+# Disable dependency scanning globally - MUST BE FIRST
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
+set(CMAKE_C_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
+
 cmake_minimum_required(VERSION 3.5)
 
 # Set extension name here
