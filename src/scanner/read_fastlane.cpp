@@ -16,7 +16,6 @@
 #include "duckdb/storage/statistics/base_statistics.hpp"
 #include "duckdb/function/table/table_scan.hpp"
 #include "duckdb/common/exception.hpp"
-#include "duckdb/common/types/column_data_collection.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/parser/tableref/table_function_ref.hpp"
 
