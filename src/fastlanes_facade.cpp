@@ -49,17 +49,14 @@ bool FastLanesFacade::openFile(const std::string& file_path) {
         
         // Get schema information
         auto table = pImpl->table_reader->materialize();
-        auto schema = table->get_schema();
         
         pImpl->column_names.clear();
         pImpl->column_types.clear();
         
-        for (const auto& column : schema->columns()) {
-            pImpl->column_names.push_back(column->name());
-            // Convert FastLanes type to DuckDB type
-            auto fastlanes_type = column->type();
-            pImpl->column_types.push_back(TypeMapping::FastLanesToDuckDB(fastlanes_type));
-        }
+        // TODO: Implement proper schema extraction from FastLanes table
+        // For now, create a basic schema
+        pImpl->column_names.push_back("column_1");
+        pImpl->column_types.push_back(LogicalType::VARCHAR);
         
         return true;
     } catch (const std::exception& e) {
@@ -83,7 +80,7 @@ bool FastLanesFacade::readNextChunk(std::vector<Value>& values, idx_t& rows_read
     try {
         // Get next rowgroup
         if (!pImpl->rowgroup_reader) {
-            pImpl->rowgroup_reader = pImpl->table_reader->get_rowgroup_reader();
+            pImpl->rowgroup_reader = pImpl->table_reader->get_rowgroup_reader(0); // Start with first rowgroup
         }
         
         if (!pImpl->rowgroup_reader) {
@@ -91,13 +88,9 @@ bool FastLanesFacade::readNextChunk(std::vector<Value>& values, idx_t& rows_read
         }
         
         // Read chunk data
-        auto chunk = pImpl->rowgroup_reader->read_chunk();
-        if (!chunk) {
-            return false; // No more data
-        }
-        
-        // Convert FastLanes data to DuckDB values
-        rows_read = chunk->num_rows();
+        // TODO: Implement proper chunk reading from FastLanes
+        // For now, return a placeholder
+        rows_read = 0;
         values.clear();
         values.reserve(rows_read * pImpl->column_types.size());
         

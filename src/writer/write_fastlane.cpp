@@ -110,7 +110,7 @@ void SerializeFastlaneData(const WriteFastlaneLocalState& local_state,
   
   // Allocate buffer
   buffer_size = total_size;
-  fastlane_buffer = std::make_unique<uint8_t[]>(buffer_size);
+  fastlane_buffer = unique_ptr<uint8_t[]>(new uint8_t[buffer_size]);
   uint8_t* buffer_ptr = fastlane_buffer.get();
   
   // Write FastLanes magic bytes

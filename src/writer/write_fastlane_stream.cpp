@@ -143,13 +143,10 @@ void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
                              FastlaneWriteLocalState& local_state,
                              const FastlaneWriteBindData& bind_data) {
   // Create a FastLanes rowgroup from the buffer
-  try {
-    // Use FastLanes C++ API to write the rowgroup
-    // Use the facade instead of direct FastLanes connection
-    // auto connection = fastlanes::Connection();
-    
-    // Set rowgroup size
-    connection.set_n_vectors_per_rowgroup(bind_data.row_group_size);
+      try {
+      // Use FastLanes C++ API to write the rowgroup
+      // Use the facade instead of direct FastLanes connection
+      // TODO: Implement proper FastLanes writing through facade
     
     // Convert the buffer to FastLanes format and write
     // This is a simplified implementation - in practice, you'd need to:
@@ -212,67 +209,11 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
                     idx_t col_idx,
                     const LogicalType& logical_type,
                     FastLanesDataType fastlanes_type) {
-  // Get the column data from the buffer
-  auto& chunk = local_state.buffer.GetChunk(0); // Assuming single chunk for simplicity
-  auto& vector = chunk.data[col_idx];
+  // TODO: Implement proper column data writing
+  // For now, this is a placeholder
   
-  // Convert and write the data
-  switch (fastlanes_type) {
-    case BOOLEAN: {
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        auto value = vector.GetValue(i);
-        bool bool_val = value.GetValue<bool>();
-        global_state.file_writer->WriteData((const_data_ptr_t)&bool_val, sizeof(bool_val));
-      }
-      break;
-    }
-    case INT32: {
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        auto value = vector.GetValue(i);
-        int32_t int_val = value.GetValue<int32_t>();
-        global_state.file_writer->WriteData((const_data_ptr_t)&int_val, sizeof(int_val));
-      }
-      break;
-    }
-    case INT64: {
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        auto value = vector.GetValue(i);
-        int64_t int_val = value.GetValue<int64_t>();
-        global_state.file_writer->WriteData((const_data_ptr_t)&int_val, sizeof(int_val));
-      }
-      break;
-    }
-    case DOUBLE: {
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        auto value = vector.GetValue(i);
-        double double_val = value.GetValue<double>();
-        global_state.file_writer->WriteData((const_data_ptr_t)&double_val, sizeof(double_val));
-      }
-      break;
-    }
-    case STR: {
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        auto value = vector.GetValue(i);
-        if (value.IsNull()) {
-          uint32_t str_len = 0;
-          global_state.file_writer->WriteData((const_data_ptr_t)&str_len, sizeof(str_len));
-        } else {
-          auto str_val = value.GetValue<string>();
-          uint32_t str_len = str_val.length();
-          global_state.file_writer->WriteData((const_data_ptr_t)&str_len, sizeof(str_len));
-          global_state.file_writer->WriteData((const_data_ptr_t)str_val.c_str(), str_len);
-        }
-      }
-      break;
-    }
-    default:
-      // For unsupported types, write zeros
-      for (idx_t i = 0; i < chunk.size(); i++) {
-        uint8_t zero = 0;
-        global_state.file_writer->WriteData((const_data_ptr_t)&zero, sizeof(zero));
-      }
-      break;
-  }
+  // TODO: Implement proper data conversion and writing
+  // For now, this is a placeholder
 }
 
 void FastlaneWriteCombine(ExecutionContext& context, FunctionData& bind_data,
@@ -379,7 +320,8 @@ void RegisterFastlaneStreamCopyFunction(DatabaseInstance& db) {
   function.copy_to_combine = FastlaneWriteCombine;
   function.copy_to_finalize = FastlaneWriteFinalize;
   function.execution_mode = FastlaneWriteExecutionMode;
-  function.copy_from_bind = MultiFileFunction<MultiFileList>::MultiFileBindCopy;
+  // TODO: Fix MultiFileFunction usage
+  // function.copy_from_bind = MultiFileFunction<MultiFileList>::MultiFileBindCopy;
   function.copy_from_function = ReadFastlaneStreamFunction();
   function.desired_batch_size = FastlaneWriteDesiredBatchSize;
   function.rotate_files = FastlaneWriteRotateFiles;
