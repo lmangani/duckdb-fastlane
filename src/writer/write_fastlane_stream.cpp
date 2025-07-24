@@ -174,7 +174,7 @@ void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
     for (idx_t row = 0; row < row_count; row++) {
       for (idx_t col = 0; col < bind_data.sql_types.size(); col++) {
         // This is a placeholder - actual implementation would extract real data
-        values.push_back(Value::SQLNULL);
+        values.push_back(Value(nullptr));
       }
     }
     

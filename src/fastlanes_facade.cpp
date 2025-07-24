@@ -68,7 +68,7 @@ bool FastLanesFacade::openFile(const std::string& file_path) {
                 
                 // Get column type
                 auto data_type = first_rowgroup.GetDataType(i);
-                auto duckdb_type = TypeMapping::FastLanesToDuckDB(data_type);
+                auto duckdb_type = TypeMapping::FastLanesToDuckDB(static_cast<FastLanesDataType>(data_type));
                 pImpl->column_types.push_back(duckdb_type);
             }
         }
@@ -124,7 +124,7 @@ bool FastLanesFacade::readNextChunk(std::vector<Value>& values, idx_t& rows_read
             // Convert FastLanes data to DuckDB values
             // This is a simplified implementation - in practice, you'd need to handle all data types
             switch (data_type) {
-                case fastlanes::DataType::I64: {
+                case fastlanes::DataType::INT64: {
                     // For integer columns, we'd need to access the actual data
                     // This is a placeholder - actual implementation would read from the column
                     for (idx_t row = 0; row < row_count; row++) {
@@ -132,7 +132,7 @@ bool FastLanesFacade::readNextChunk(std::vector<Value>& values, idx_t& rows_read
                     }
                     break;
                 }
-                case fastlanes::DataType::STRING: {
+                case fastlanes::DataType::STR: {
                     // For string columns
                     for (idx_t row = 0; row < row_count; row++) {
                         values.push_back(Value("")); // Placeholder
@@ -142,7 +142,7 @@ bool FastLanesFacade::readNextChunk(std::vector<Value>& values, idx_t& rows_read
                 default: {
                     // For other types
                     for (idx_t row = 0; row < row_count; row++) {
-                        values.push_back(Value::SQLNULL);
+                        values.push_back(Value(nullptr));
                     }
                     break;
                 }
