@@ -1,7 +1,3 @@
-# Disable dependency scanning globally - MUST BE FIRST
-set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
-set(CMAKE_C_COMPILER_CLANG_SCAN_DEPS OFF CACHE BOOL "Disable Clang dependency scanning" FORCE)
-
 cmake_minimum_required(VERSION 3.5)
 
 # Set extension name here
@@ -12,24 +8,11 @@ set(TARGET_NAME fastlane)
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
 find_package(OpenSSL REQUIRED)
 
-# Check if we have the FastLanes submodule
-if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt")
-    message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
+# Check if FastLanes library exists (must be built separately)
+set(FASTLANES_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a")
+if (NOT EXISTS "${FASTLANES_LIB_PATH}")
+    message(FATAL_ERROR "FastLanes library not found at ${FASTLANES_LIB_PATH}. Please run: ./build_fastlanes.sh")
 endif()
-
-# Build FastLanes using its own Makefile system
-add_custom_target(fastlanes_build
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
-        ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DFLS_BUILD_SHARED_LIBS=OFF
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
-        ${CMAKE_COMMAND} --build . --parallel
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Building FastLanes using its own build system"
-)
 
 # Set up FastLanes include and library paths
 set(FASTLANES_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/src/include)
@@ -37,12 +20,9 @@ set(FASTLANES_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/src/
 # Create imported target for FastLanes
 add_library(FastLanes STATIC IMPORTED)
 set_target_properties(FastLanes PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
+    IMPORTED_LOCATION ${FASTLANES_LIB_PATH}
     INTERFACE_INCLUDE_DIRECTORIES ${FASTLANES_INCLUDE_DIR}
 )
-
-# Add dependency to ensure FastLanes is built before our extension
-add_dependencies(FastLanes fastlanes_build)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
