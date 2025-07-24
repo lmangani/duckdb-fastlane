@@ -14,7 +14,6 @@
 #include "duckdb/parser/expression/function_expression.hpp"
 #include "duckdb/parser/tableref/table_function_ref.hpp"
 #include "duckdb/storage/statistics/base_statistics.hpp"
-#include "duckdb/storage/table/table_scan_info.hpp"
 #include "duckdb/function/table/table_scan.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/types/column_data_collection.hpp"
