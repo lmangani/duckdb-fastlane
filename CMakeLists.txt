@@ -28,20 +28,20 @@ set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
-include_directories(src/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 include_directories(${FASTLANES_INCLUDE_DIR})
 
 # Separate sources for C++20 facade and standard DuckDB extension
 set(FASTLANES_FACADE_SOURCES 
-    src/fastlanes_facade.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp
 )
 
 set(EXTENSION_SOURCES 
-    src/fastlane_extension.cpp
-    src/scanner/read_fastlane.cpp
-    src/writer/write_fastlane.cpp
-    src/writer/write_fastlane_stream.cpp
-    src/type_mapping.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlane_extension.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/read_fastlane.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane_stream.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/type_mapping.cpp
 )
 
 # Build the C++20 facade library

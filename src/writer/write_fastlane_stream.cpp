@@ -1,14 +1,11 @@
 #include "write_fastlane_stream.hpp"
 #include "type_mapping.hpp"
+#include "fastlanes_facade.hpp"
 
 #include "duckdb/common/multi_file/multi_file_function.hpp"
 #include "duckdb/common/serializer/buffered_file_writer.hpp"
 #include "duckdb/function/copy_function.hpp"
 #include "duckdb/main/extension_util.hpp"
-
-// FastLanes includes
-#include "fastlanes.hpp"
-#include "fls/connection.hpp"
 
 #include "table_function/read_fastlane.hpp"
 
@@ -32,7 +29,7 @@ struct FastlaneWriteBindData : public TableFunctionData {
 };
 
 struct FastlaneWriteGlobalState : public GlobalFunctionData {
-  unique_ptr<fastlanes::Connection> connection;
+  unique_ptr<FastLanesFacade> facade;
   string file_path;
   idx_t current_rowgroup = 0;
   idx_t rows_in_current_rowgroup = 0;
@@ -97,7 +94,7 @@ unique_ptr<GlobalFunctionData> FastlaneWriteInitializeGlobal(ClientContext& cont
                                                             FunctionData& bind_data,
                                                             const string& file_path) {
   auto result = make_uniq<FastlaneWriteGlobalState>();
-  result->connection = make_uniq<fastlanes::Connection>();
+  result->facade = make_uniq<FastLanesFacade>();
   result->file_path = file_path;
   result->file_writer = make_uniq<BufferedFileWriter>(FileSystem::GetFileSystem(context), file_path);
   return std::move(result);

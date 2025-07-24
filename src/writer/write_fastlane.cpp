@@ -1,14 +1,11 @@
 #include "writer/write_fastlane.hpp"
 #include "type_mapping.hpp"
+#include "fastlanes_facade.hpp"
 
 #include "duckdb/main/extension_util.hpp"
 #include "duckdb/function/function.hpp"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/main/client_context.hpp"
-
-// FastLanes includes
-#include "fastlanes.hpp"
-#include "fls/connection.hpp"
 
 namespace duckdb {
 
@@ -25,11 +22,11 @@ struct WriteFastlaneGlobalState : public GlobalTableFunctionState {
   WriteFastlaneGlobalState() : sent_schema(false) {}
   atomic<bool> sent_schema;
   mutex lock;
-  unique_ptr<fastlanes::Connection> connection;
+  unique_ptr<FastLanesFacade> facade;
 };
 
 struct WriteFastlaneLocalState : public LocalTableFunctionState {
-  unique_ptr<fastlanes::Connection> connection;
+  unique_ptr<FastLanesFacade> facade;
   idx_t current_count = 0;
   bool checked_schema = false;
 };
@@ -38,14 +35,14 @@ unique_ptr<LocalTableFunctionState> WriteFastlaneFunction::InitLocal(
     ExecutionContext& context, TableFunctionInitInput& input,
     GlobalTableFunctionState* global_state) {
   auto local_state = make_uniq<WriteFastlaneLocalState>();
-  local_state->connection = make_uniq<fastlanes::Connection>();
+  local_state->facade = make_uniq<FastLanesFacade>();
   return local_state;
 }
 
 unique_ptr<GlobalTableFunctionState> WriteFastlaneFunction::InitGlobal(
     ClientContext& context, TableFunctionInitInput& input) {
   auto result = make_uniq<WriteFastlaneGlobalState>();
-  result->connection = make_uniq<fastlanes::Connection>();
+  result->facade = make_uniq<FastLanesFacade>();
   return result;
 }
 
