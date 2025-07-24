@@ -13,10 +13,6 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt
     message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
 endif()
 
-# Store original compiler settings
-set(ORIGINAL_C_COMPILER ${CMAKE_C_COMPILER})
-set(ORIGINAL_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-
 # Find Clang compilers
 find_program(CLANG_C NAMES clang)
 find_program(CLANG_CXX NAMES clang++)
@@ -25,23 +21,31 @@ if (NOT CLANG_C OR NOT CLANG_CXX)
     message(FATAL_ERROR "Clang compilers not found. FastLanes requires Clang.")
 endif()
 
-# Temporarily switch to Clang for FastLanes build
-set(CMAKE_C_COMPILER ${CLANG_C} CACHE STRING "C Compiler" FORCE)
-set(CMAKE_CXX_COMPILER ${CLANG_CXX} CACHE STRING "C++ Compiler" FORCE)
+# Build FastLanes separately with Clang using ExternalProject
+include(ExternalProject)
 
-# Add FastLanes library from submodule (will use Clang)
-add_subdirectory(third_party/fastlanes)
-include_directories(third_party/fastlanes/src/include)
+ExternalProject_Add(
+    fastlanes_external
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CLANG_C}
+        -DCMAKE_CXX_COMPILER=${CLANG_CXX}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install/lib/libFastLanes.a
+)
 
-# Restore original compiler settings for the rest of the build
-set(CMAKE_C_COMPILER ${ORIGINAL_C_COMPILER} CACHE STRING "C Compiler" FORCE)
-set(CMAKE_CXX_COMPILER ${ORIGINAL_CXX_COMPILER} CACHE STRING "C++ Compiler" FORCE)
+# Set up FastLanes include and library paths
+set(FASTLANES_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/src/include)
+set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_install/lib/libFastLanes.a)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
 include_directories(src/include)
+include_directories(${FASTLANES_INCLUDE_DIR})
 
 set(EXTENSION_SOURCES 
     src/fastlane_extension.cpp
@@ -55,10 +59,14 @@ build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
 # Link OpenSSL and FastLanes
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes::core)
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto ${FASTLANES_LIBRARY})
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto ${FASTLANES_LIBRARY})
 target_compile_definitions(${EXTENSION_NAME} PRIVATE FLS_STATIC)
 target_compile_definitions(${LOADABLE_EXTENSION_NAME} PRIVATE FLS_STATIC)
+
+# Add dependency on FastLanes build
+add_dependencies(${EXTENSION_NAME} fastlanes_external)
+add_dependencies(${LOADABLE_EXTENSION_NAME} fastlanes_external)
 
 install(
   TARGETS ${EXTENSION_NAME}
