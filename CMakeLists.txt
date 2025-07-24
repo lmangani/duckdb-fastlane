@@ -42,14 +42,15 @@ ExternalProject_Add(
 # Set up FastLanes include and library paths
 set(FASTLANES_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/src/include)
 
-# Try to find the library in the build directory
-if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a)
-    set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a)
-elseif (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so)
-    set(FASTLANES_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.so)
-else()
-    message(FATAL_ERROR "FastLanes library not found in build directory")
-endif()
+# Create imported target for FastLanes
+add_library(FastLanes STATIC IMPORTED)
+set_target_properties(FastLanes PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/fastlanes_build/src/libFastLanes.a
+    INTERFACE_INCLUDE_DIRECTORIES ${FASTLANES_INCLUDE_DIR}
+)
+
+# Add dependency to ensure FastLanes is built before our extension
+add_dependencies(FastLanes fastlanes_external)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
@@ -70,14 +71,10 @@ build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
 # Link OpenSSL and FastLanes
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto ${FASTLANES_LIBRARY})
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto ${FASTLANES_LIBRARY})
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto FastLanes)
 target_compile_definitions(${EXTENSION_NAME} PRIVATE FLS_STATIC)
 target_compile_definitions(${LOADABLE_EXTENSION_NAME} PRIVATE FLS_STATIC)
-
-# Add dependency on FastLanes build
-add_dependencies(${EXTENSION_NAME} fastlanes_external)
-add_dependencies(${LOADABLE_EXTENSION_NAME} fastlanes_external)
 
 install(
   TARGETS ${EXTENSION_NAME}
