@@ -8,19 +8,34 @@ set(TARGET_NAME fastlane)
 # Note that it should also be removed from vcpkg.json to prevent needlessly installing it..
 find_package(OpenSSL REQUIRED)
 
-# Check if we can build FastLanes (requires Clang)
-if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message(FATAL_ERROR "FastLanes extension requires Clang compiler. Current compiler: ${CMAKE_CXX_COMPILER_ID}")
-endif()
-
 # Check if we have the FastLanes submodule
 if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fastlanes/CMakeLists.txt")
     message(FATAL_ERROR "FastLanes submodule not found. Please run: git submodule update --init --recursive")
 endif()
 
-# Add FastLanes library from submodule
+# Store original compiler settings
+set(ORIGINAL_C_COMPILER ${CMAKE_C_COMPILER})
+set(ORIGINAL_CXX_COMPILER ${CMAKE_CXX_COMPILER})
+
+# Find Clang compilers
+find_program(CLANG_C NAMES clang)
+find_program(CLANG_CXX NAMES clang++)
+
+if (NOT CLANG_C OR NOT CLANG_CXX)
+    message(FATAL_ERROR "Clang compilers not found. FastLanes requires Clang.")
+endif()
+
+# Temporarily switch to Clang for FastLanes build
+set(CMAKE_C_COMPILER ${CLANG_C} CACHE STRING "C Compiler" FORCE)
+set(CMAKE_CXX_COMPILER ${CLANG_CXX} CACHE STRING "C++ Compiler" FORCE)
+
+# Add FastLanes library from submodule (will use Clang)
 add_subdirectory(third_party/fastlanes)
 include_directories(third_party/fastlanes/src/include)
+
+# Restore original compiler settings for the rest of the build
+set(CMAKE_C_COMPILER ${ORIGINAL_C_COMPILER} CACHE STRING "C Compiler" FORCE)
+set(CMAKE_CXX_COMPILER ${ORIGINAL_CXX_COMPILER} CACHE STRING "C++ Compiler" FORCE)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
