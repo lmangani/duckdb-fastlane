@@ -11,15 +11,7 @@
 namespace duckdb {
 namespace ext_fastlane {
 
-class FastlaneStringVectorBuffer : public VectorBuffer {
- public:
-  explicit FastlaneStringVectorBuffer(std::unique_ptr<uint8_t[]> buffer_p, size_t size_p)
-      : VectorBuffer(VectorBufferType::OPAQUE_BUFFER), buffer(std::move(buffer_p)), size(size_p) {}
 
- private:
-  std::unique_ptr<uint8_t[]> buffer;
-  size_t size;
-};
 
 class WriteFastlaneFunction {
  public:

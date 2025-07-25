@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include "duckdb/common/types.hpp"
+#include "duckdb/common/types/data_chunk.hpp"
 
 namespace duckdb {
 
@@ -39,7 +40,7 @@ public:
     bool createFile(const std::string& file_path, 
                    const std::vector<LogicalType>& types,
                    const std::vector<std::string>& names);
-    bool writeChunk(const std::vector<Value>& values, idx_t rows);
+    bool writeChunk(DataChunk &chunk);
     void finalizeFile();
     
     // Utility

@@ -129,10 +129,11 @@ static void Scan(ClientContext& context, TableFunctionInput& data_p, DataChunk& 
       output.SetCardinality(rows_read);
       
       // Convert the values to the output chunk
+      // Data is now in column-major format: [col0_row0, col0_row1, ..., col1_row0, col1_row1, ...]
       for (idx_t col_idx = 0; col_idx < data.sql_types.size(); col_idx++) {
         auto& vector = output.data[col_idx];
         for (idx_t row = 0; row < rows_read; row++) {
-          auto value_idx = row * data.sql_types.size() + col_idx;
+          auto value_idx = col_idx * rows_read + row;
           if (value_idx < local_state.current_chunk_values.size()) {
             vector.SetValue(row, local_state.current_chunk_values[value_idx]);
           }

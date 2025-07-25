@@ -9,7 +9,8 @@
 #pragma once
 
 #include "duckdb/common/types.hpp"
-#include "fastlanes.h" // Include the actual FastLanes header
+#include <fastlanes.h> // Use vcpkg-provided FastLanes header
+#include <data_type.hpp> // Use vcpkg-provided FastLanes data type header
 
 namespace duckdb {
 
@@ -25,6 +26,7 @@ public:
   
   // Convert FastLanes data type to DuckDB LogicalType
   static LogicalType FastLanesToDuckDB(FastLanesDataType fastlanes_type);
+  static LogicalType FastLanesToDuckDB(fastlanes::DataType fastlanes_type);
   
   // Get the size in bytes for a FastLanes data type
   static uint32_t GetFastLanesTypeSize(FastLanesDataType type);

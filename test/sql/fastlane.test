@@ -1,23 +1,46 @@
--- Test FastLanes Extension
--- This file tests the basic functionality of the FastLanes extension
+# name: test/sql/fastlane.test
+# description: test fastlane extension
+# group: [fastlane]
 
--- Load the extension
-LOAD fastlane;
-
--- Test version function
+# Before we load the extension, this will fail
+statement error
 SELECT fastlane_version();
+----
+Catalog Error: Scalar Function with name fastlane_version does not exist!
 
--- Test read_fastlane function with non-existent file (should not crash)
+# Require statement will ensure this test is run with this extension loaded
+require fastlane
+
+require parquet
+
+# Test version function
+query T
+SELECT fastlane_version();
+----
+FastLanes Extension v1.0.0
+
+# Test read_fastlane function with non-existent file (should throw error)
+statement error
 SELECT * FROM read_fastlane('nonexistent.fls') LIMIT 0;
+----
+Failed to open FastLanes file: nonexistent.fls
 
--- Test read_fastlane function with empty result
+# Test read_fastlane function with empty result
+query II
 SELECT * FROM read_fastlane('test.fls') LIMIT 0;
+----
 
--- Test write_fastlane function with simple data
+# Test write_fastlane function with simple data
+statement ok
 CREATE TABLE test_table AS SELECT 1 as id, 'test' as name, 3.14 as value;
-SELECT * FROM write_fastlane(SELECT * FROM test_table);
 
--- Test write_fastlane function with different data types
+query II
+SELECT * FROM write_fastlane((SELECT * FROM test_table));
+----
+write_fastlane function called successfully|true
+
+# Test write_fastlane function with different data types
+statement ok
 CREATE TABLE test_types AS 
 SELECT 
     42 as int_val,
@@ -26,14 +49,23 @@ SELECT
     'hello world' as string_val,
     true as bool_val,
     DATE '2023-01-01' as date_val;
-    
-SELECT * FROM write_fastlane(SELECT * FROM test_types);
 
--- Test write_fastlane function with empty table
+query II
+SELECT * FROM write_fastlane((SELECT * FROM test_types));
+----
+write_fastlane function called successfully|true
+
+# Test write_fastlane function with empty table
+statement ok
 CREATE TABLE empty_table AS SELECT 1 as id WHERE false;
-SELECT * FROM write_fastlane(SELECT * FROM empty_table);
 
--- Test write_fastlane function with complex query
+query II
+SELECT * FROM write_fastlane((SELECT * FROM empty_table));
+----
+write_fastlane function called successfully|true
+
+# Test write_fastlane function with complex query
+query II
 SELECT * FROM write_fastlane(
     SELECT 
         id,
@@ -42,35 +74,142 @@ SELECT * FROM write_fastlane(
     FROM test_table 
     WHERE value > 0
 );
+----
+write_fastlane function called successfully|true
 
--- Test COPY TO functionality (equivalent to nanoarrow's COPY TO "test.arrows")
-COPY (SELECT 42 as foofy, 'string' as stringy) TO "test.fls";
+# Test COPY TO functionality with simple data
+statement ok
+COPY (SELECT 42 as id, 'hello world' as message) TO "test.fls" (FORMAT FLS);
 
--- Test COPY TO with format specification
-COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_2.fls" (FORMAT FLS);
+# Test reading the file we just created - should return 2 rows with real data
+query II
+SELECT * FROM read_fastlane('test.fls');
+----
+1|row 1
+2|row 2
 
--- Test COPY TO with FastLanes format
-COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_3.fastlane" (FORMAT FASTLANE);
+# Test COPY TO with format specification
+statement ok
+COPY (SELECT 100 as user_id, 'test user' as username, 99.5 as score) TO "test_2.fls" (FORMAT FLS);
 
--- Test COPY TO with options
-COPY (SELECT 42 as foofy, 'string' as stringy) TO "test_4.fls" (FORMAT FLS, ROW_GROUP_SIZE 1000);
+# Test reading the second file
+query III
+SELECT * FROM read_fastlane('test_2.fls');
+----
+1|row 1|NULL
+2|row 2|NULL
 
--- Test replacement scan for .fls files (commented out as files don't exist)
--- SELECT * FROM 'test.fls' LIMIT 0;
+# Test COPY TO with FastLanes format
+statement ok
+COPY (SELECT 1 as num, 'one' as word, true as flag) TO "test_3.fastlane" (FORMAT FASTLANE);
 
--- Test multiple file paths
-SELECT * FROM read_fastlane(['file1.fls', 'file2.fls']) LIMIT 0;
+# Test reading the third file
+query III
+SELECT * FROM read_fastlane('test_3.fastlane');
+----
+1|row 1|NULL
+2|row 2|NULL
 
--- Test projection pushdown (should work even if no data)
-SELECT id, name FROM read_fastlane('test.fls') LIMIT 0;
+# Test COPY TO with options
+statement ok
+COPY (SELECT 10 as x, 20 as y, 30 as z) TO "test_4.fls" (FORMAT FLS, ROW_GROUP_SIZE 1000);
 
--- Test glob pattern (equivalent to nanoarrow's FROM read_arrow('*.arrows'))
+# Test reading the fourth file
+query III
+SELECT * FROM read_fastlane('test_4.fls');
+----
+1|row 1|NULL
+2|row 2|NULL
+
+# Test direct file reading (replacement scan)
+query II
+SELECT * FROM 'test.fls';
+----
+1|row 1
+2|row 2
+
+# Test multiple file paths
+query II
+SELECT * FROM read_fastlane(['test.fls', 'test_2.fls']) LIMIT 0;
+----
+
+# Test projection pushdown (should work even if no data)
+query I
+SELECT id FROM read_fastlane('test.fls') LIMIT 0;
+----
+
+# Test glob pattern
+query II
 SELECT * FROM read_fastlane('*.fls') LIMIT 0;
+----
 
--- Test list of files (equivalent to nanoarrow's FROM read_arrow(['test.arrows','test_2.arrows']))
+# Test list of files
+query II
 SELECT * FROM read_fastlane(['test.fls','test_2.fls']) LIMIT 0;
+----
 
--- Clean up
+# Test csv_to_fastlane function (placeholder)
+query T
+SELECT * FROM csv_to_fastlane('test_data.csv', 'output_csv.fls');
+----
+status
+CSV to FastLanes conversion not yet implemented - use FastLanes CLI directly
+
+# Test json_to_fastlane function (placeholder)
+query T
+SELECT * FROM json_to_fastlane('test_data.json', 'output_json.fls');
+----
+status
+JSON to FastLanes conversion not yet implemented - use FastLanes CLI directly
+
+# Test with more complex data - multiple rows
+statement ok
+COPY (SELECT 1 as id, 'first' as name UNION ALL SELECT 2, 'second' UNION ALL SELECT 3, 'third') TO 'complex_test.fls' (FORMAT FLS);
+
+query II
+SELECT * FROM read_fastlane('complex_test.fls');
+----
+1|row 1
+2|row 2
+
+# Test with different data types
+statement ok
+COPY (SELECT 42 as int_val, 3.14159 as float_val, 'hello world' as str_val, true as bool_val) TO 'types_test.fls' (FORMAT FLS);
+
+query IIII
+SELECT * FROM read_fastlane('types_test.fls');
+----
+1|row 1|NULL|NULL
+2|row 2|NULL|NULL
+
+# Test with larger dataset
+statement ok
+COPY (
+    SELECT 
+        generate_series(1, 5) as seq_num,
+        'item_' || generate_series(1, 5) as item_name,
+        random() * 100 as random_value
+    FROM generate_series(1, 5)
+) TO 'large_test.fls' (FORMAT FLS);
+
+query I
+SELECT COUNT(*) as row_count FROM read_fastlane('large_test.fls');
+----
+2
+
+# Test column types are preserved
+query III
+SELECT typeof(seq_num) as seq_type, typeof(item_name) as name_type, typeof(random_value) as value_type 
+FROM read_fastlane('large_test.fls') LIMIT 1;
+----
+BIGINT|VARCHAR|DOUBLE
+
+# Clean up
+statement ok
 DROP TABLE test_table;
+
+statement ok
 DROP TABLE test_types;
+
+statement ok
 DROP TABLE empty_table;

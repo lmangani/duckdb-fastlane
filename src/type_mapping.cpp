@@ -2,6 +2,7 @@
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/timestamp.hpp"
+#include "fastlanes.h"
 
 namespace duckdb {
 
@@ -101,6 +102,10 @@ LogicalType TypeMapping::FastLanesToDuckDB(FastLanesDataType fastlanes_type) {
     default:
       return LogicalType::VARCHAR; // Default fallback
   }
+}
+
+LogicalType TypeMapping::FastLanesToDuckDB(fastlanes::DataType fastlanes_type) {
+    return FastLanesToDuckDB(static_cast<FastLanesDataType>(fastlanes_type));
 }
 
 uint32_t TypeMapping::GetFastLanesTypeSize(FastLanesDataType type) {

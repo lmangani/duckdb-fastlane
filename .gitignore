@@ -7,3 +7,7 @@ testext
 test/python/__pycache__/
 .Rhistory
 tmp
+# Build artifacts
+build/
+vcpkg/
+vcpkg_installed/

@@ -3,7 +3,7 @@
 #include "fastlanes_facade.hpp"
 
 #include "duckdb/common/multi_file/multi_file_function.hpp"
-#include "duckdb/common/serializer/buffered_file_writer.hpp"
+
 #include "duckdb/function/copy_function.hpp"
 #include "duckdb/main/extension_util.hpp"
 
@@ -33,7 +33,6 @@ struct FastlaneWriteGlobalState : public GlobalFunctionData {
   string file_path;
   idx_t current_rowgroup = 0;
   idx_t rows_in_current_rowgroup = 0;
-  unique_ptr<BufferedFileWriter> file_writer;
 };
 
 struct FastlaneWriteLocalState : public LocalFunctionData {
@@ -120,7 +119,6 @@ unique_ptr<GlobalFunctionData> FastlaneWriteInitializeGlobal(ClientContext& cont
   }
   
   result->file_path = file_path;
-  result->file_writer = make_uniq<BufferedFileWriter>(FileSystem::GetFileSystem(context), file_path);
   return std::move(result);
 }
 
@@ -156,35 +154,22 @@ void WriteRowgroupToFastLanes(FastlaneWriteGlobalState& global_state,
     }
     
     // Convert the buffer data to FastLanes format
-    auto row_count = local_state.buffer.Count();
-    if (row_count == 0) {
+    auto& buffer = local_state.buffer;
+    if (buffer.Count() == 0) {
       return; // Nothing to write
     }
-    
-    // Create a FastLanes rowgroup
-    // Note: This is a simplified implementation
-    // In practice, you'd need to properly convert DuckDB data to FastLanes format
-    
-    // Write the rowgroup using the facade
-    std::vector<Value> values;
-    values.reserve(row_count * bind_data.sql_types.size());
-    
-    // Extract data from the buffer (simplified)
-    // In practice, you'd iterate through the ColumnDataCollection properly
-    for (idx_t row = 0; row < row_count; row++) {
-      for (idx_t col = 0; col < bind_data.sql_types.size(); col++) {
-        // This is a placeholder - actual implementation would extract real data
-        values.push_back(Value(nullptr));
-      }
-    }
-    
-    // Write the chunk through the facade
-    if (!global_state.facade->writeChunk(values, row_count)) {
-      throw IOException("Failed to write chunk to FastLanes");
+
+    for (auto& chunk_ptr : local_state.buffer.Chunks()) {
+        DataChunk chunk;
+        chunk.Initialize(Allocator::DefaultAllocator(), chunk_ptr.GetTypes());
+        chunk_ptr.Copy(chunk);
+        if (!global_state.facade->writeChunk(chunk)) {
+            throw IOException("Failed to write chunk to FastLanes");
+        }
     }
     
     global_state.current_rowgroup++;
-    global_state.rows_in_current_rowgroup += row_count;
+    global_state.rows_in_current_rowgroup += buffer.Count();
     
   } catch (const std::exception& e) {
     throw IOException("Failed to write FastLanes rowgroup: %s", e.what());
@@ -225,28 +210,27 @@ void WriteColumnData(FastlaneWriteGlobalState& global_state,
 
 void FastlaneWriteCombine(ExecutionContext& context, FunctionData& bind_data,
                          GlobalFunctionData& gstate, LocalFunctionData& lstate) {
-  // Nothing to do for FastLanes - all data is written in the sink
+  auto& bind_data_cast = bind_data.Cast<FastlaneWriteBindData>();
+  auto& global_state = gstate.Cast<FastlaneWriteGlobalState>();
+  auto& local_state = lstate.Cast<FastlaneWriteLocalState>();
+
+  if (local_state.buffer.Count() > 0) {
+    WriteRowgroupToFastLanes(global_state, local_state, bind_data_cast);
+    local_state.buffer.Reset();
+    local_state.buffer.InitializeAppend(local_state.append_state);
+  }
 }
 
 void FastlaneWriteFinalize(ClientContext& context, FunctionData& bind_data,
                           GlobalFunctionData& gstate) {
   auto& global_state = gstate.Cast<FastlaneWriteGlobalState>();
-  auto& bind_data_cast = bind_data.Cast<FastlaneWriteBindData>();
   
   try {
-    // Write any remaining data in buffers
     if (global_state.facade) {
-      // Write any remaining buffered data through the facade
-      // This would involve extracting data from the buffer and writing it
-      
-      // Finalize the FastLanes file through the facade
       global_state.facade->finalizeFile();
     }
     
-    // Close the file writer
-    if (global_state.file_writer) {
-      global_state.file_writer->Close();
-    }
+
     
   } catch (const std::exception& e) {
     throw IOException("Failed to finalize FastLanes file: %s", e.what());

@@ -12,6 +12,8 @@
 #include "table_function/read_fastlane.hpp"
 #include "writer/write_fastlane.hpp"
 #include "write_fastlane_stream.hpp"
+#include "table_function/csv_to_fastlane.hpp"
+#include "table_function/json_to_fastlane.hpp"
 
 // OpenSSL linked through vcpkg
 #include <openssl/opensslv.h>
@@ -51,6 +53,11 @@ void LoadInternal(DatabaseInstance& db) {
     // Register copy functions
     std::cout << "FastLanes Extension: Registering copy functions..." << std::endl;
     ext_fastlane::RegisterFastlaneStreamCopyFunction(db);
+    
+    // Register converter functions
+    std::cout << "FastLanes Extension: Registering converter functions..." << std::endl;
+    ext_fastlane::RegisterCsvToFastlane(db);
+    ext_fastlane::RegisterJsonToFastlane(db);
     
     std::cout << "FastLanes Extension: Loaded successfully!" << std::endl;
   } catch (const std::exception& e) {
