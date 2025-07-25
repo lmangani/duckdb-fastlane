@@ -7,7 +7,7 @@
 #include "duckdb/function/copy_function.hpp"
 #include "duckdb/main/extension_util.hpp"
 
-#include "table_function/read_fastlane.hpp"
+#include "table_function/scan_fastlanes.hpp"
 
 namespace duckdb {
 
@@ -300,7 +300,7 @@ void RegisterFastlaneStreamCopyFunction(DatabaseInstance& db) {
   function.copy_to_combine = FastlaneWriteCombine;
   function.copy_to_finalize = FastlaneWriteFinalize;
   function.execution_mode = FastlaneWriteExecutionMode;
-  function.copy_from_function = ReadFastlaneStreamFunction();
+  function.copy_from_function = ScanFastlanesStreamFunction();
   function.desired_batch_size = FastlaneWriteDesiredBatchSize;
   function.rotate_files = FastlaneWriteRotateFiles;
   function.rotate_next_file = FastlaneWriteRotateNextFile;

@@ -1,4 +1,4 @@
-#include "table_function/read_fastlane.hpp"
+#include "table_function/scan_fastlanes.hpp"
 #include "fastlanes_facade.hpp"
 #include "type_mapping.hpp"
 #include "duckdb/main/extension_util.hpp"
@@ -61,13 +61,13 @@ static unique_ptr<FunctionData> Bind(ClientContext& context, TableFunctionBindIn
   // Handle file paths
   auto& inputs = input.inputs;
   if (inputs.empty()) {
-    throw BinderException("read_fastlane requires at least one file path");
+    throw BinderException("scan_fastlanes requires at least one file path");
   }
   
   // Get file paths
   for (auto& input : inputs) {
     if (input.type() != LogicalType::VARCHAR) {
-      throw BinderException("read_fastlane file paths must be strings");
+      throw BinderException("scan_fastlanes file paths must be strings");
     }
     result->files.push_back(input.GetValue<string>());
   }
@@ -129,11 +129,11 @@ static void Scan(ClientContext& context, TableFunctionInput& data_p, DataChunk& 
       output.SetCardinality(rows_read);
       
       // Convert the values to the output chunk
-      // Data is now in column-major format: [col0_row0, col0_row1, ..., col1_row0, col1_row1, ...]
-      for (idx_t col_idx = 0; col_idx < data.sql_types.size(); col_idx++) {
+      // Data is now in row-major format: [row0_col0, row0_col1, row1_col0, row1_col1, ...]
+      for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
         auto& vector = output.data[col_idx];
         for (idx_t row = 0; row < rows_read; row++) {
-          auto value_idx = col_idx * rows_read + row;
+          auto value_idx = row * data.sql_types.size() + col_idx;
           if (value_idx < local_state.current_chunk_values.size()) {
             vector.SetValue(row, local_state.current_chunk_values[value_idx]);
           }
@@ -148,17 +148,17 @@ static void Scan(ClientContext& context, TableFunctionInput& data_p, DataChunk& 
   }
 }
 
-TableFunction ReadFastlaneStreamFunction() {
-  TableFunction read_fastlane("read_fastlane", {LogicalType::VARCHAR}, Scan, Bind, InitGlobal, InitLocal);
-  read_fastlane.projection_pushdown = true;
-  read_fastlane.filter_pushdown = false;
-  read_fastlane.filter_prune = false;
-  read_fastlane.named_parameters["auto_detect"] = LogicalType::BOOLEAN;
-  return read_fastlane;
+TableFunction ScanFastlanesStreamFunction() {
+  TableFunction scan_fastlanes("scan_fastlanes", {LogicalType::VARCHAR}, Scan, Bind, InitGlobal, InitLocal);
+  scan_fastlanes.projection_pushdown = true;
+  scan_fastlanes.filter_pushdown = false;
+  scan_fastlanes.filter_prune = false;
+  scan_fastlanes.named_parameters["auto_detect"] = LogicalType::BOOLEAN;
+  return scan_fastlanes;
 }
 
-void RegisterReadFastlaneStream(DatabaseInstance& db) {
-  auto function = ReadFastlaneStreamFunction();
+void RegisterScanFastlanesStream(DatabaseInstance& db) {
+  auto function = ScanFastlanesStreamFunction();
   ExtensionUtil::RegisterFunction(db, function);
   // So we can accept a list of paths as well e.g., ['file_1.fls','file_2.fls']
   function.arguments = {LogicalType::LIST(LogicalType::VARCHAR)};
@@ -179,7 +179,7 @@ static unique_ptr<TableRef> ReadFastlaneReplacementScan(ClientContext& context, 
   auto table_function = make_uniq<TableFunctionRef>();
   vector<unique_ptr<ParsedExpression>> children;
   children.push_back(make_uniq<ConstantExpression>(Value(table_name)));
-  table_function->function = make_uniq<FunctionExpression>("read_fastlane", std::move(children));
+  table_function->function = make_uniq<FunctionExpression>("scan_fastlanes", std::move(children));
   
   return std::move(table_function);
 }

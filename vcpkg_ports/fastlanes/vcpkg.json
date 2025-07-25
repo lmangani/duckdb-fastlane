@@ -1,0 +1,12 @@
+{
+  "name": "fastlanes",
+  "version": "0.1.0",
+  "port-version": 1,
+  "description": "FastLanes is a high-performance columnar storage format",
+  "homepage": "https://github.com/cwida/FastLanes",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    "openssl"
+  ]
+} 

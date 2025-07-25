@@ -37,7 +37,7 @@ set(FASTLANES_CONVERTER_SOURCES
 
 set(EXTENSION_SOURCES 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlane_extension.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/read_fastlane.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/scan_fastlanes.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane_stream.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/type_mapping.cpp

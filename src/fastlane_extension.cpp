@@ -9,7 +9,7 @@
 #include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
 
 // FastLanes table function includes
-#include "table_function/read_fastlane.hpp"
+#include "table_function/scan_fastlanes.hpp"
 #include "writer/write_fastlane.hpp"
 #include "write_fastlane_stream.hpp"
 #include "table_function/csv_to_fastlane.hpp"
@@ -36,32 +36,48 @@ struct FastlaneVersion {
 
 void LoadInternal(DatabaseInstance& db) {
   // Debug output to see if extension is loading
-  std::cout << "FastLanes Extension: Loading..." << std::endl;
+  if (std::getenv("DEBUG")) {
+    std::cout << "FastLanes Extension: Loading..." << std::endl;
+  }
   
   try {
     // Register version function
-    std::cout << "FastLanes Extension: Registering version function..." << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Registering version function..." << std::endl;
+    }
     FastlaneVersion::Register(db);
     
     // Register table functions
-    std::cout << "FastLanes Extension: Registering read_fastlane function..." << std::endl;
-    ext_fastlane::RegisterReadFastlaneStream(db);
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Registering scan_fastlanes function..." << std::endl;
+    }
+          ext_fastlane::RegisterScanFastlanesStream(db);
     
-    std::cout << "FastLanes Extension: Registering write_fastlane function..." << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Registering write_fastlane function..." << std::endl;
+    }
     ext_fastlane::WriteFastlaneFunction::RegisterWriteFastlaneFunction(db);
     
     // Register copy functions
-    std::cout << "FastLanes Extension: Registering copy functions..." << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Registering copy functions..." << std::endl;
+    }
     ext_fastlane::RegisterFastlaneStreamCopyFunction(db);
     
     // Register converter functions
-    std::cout << "FastLanes Extension: Registering converter functions..." << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Registering converter functions..." << std::endl;
+    }
     ext_fastlane::RegisterCsvToFastlane(db);
     ext_fastlane::RegisterJsonToFastlane(db);
     
-    std::cout << "FastLanes Extension: Loaded successfully!" << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cout << "FastLanes Extension: Loaded successfully!" << std::endl;
+    }
   } catch (const std::exception& e) {
-    std::cerr << "FastLanes Extension: Error loading: " << e.what() << std::endl;
+    if (std::getenv("DEBUG")) {
+      std::cerr << "FastLanes Extension: Error loading: " << e.what() << std::endl;
+    }
     throw;
   }
 }
@@ -89,7 +105,9 @@ std::string FastlaneExtension::Version() const {
 extern "C" {
 
 DUCKDB_EXTENSION_API void fastlane_init(duckdb::DatabaseInstance& db) {
-  std::cout << "FastLanes Extension: fastlane_init called" << std::endl;
+  if (std::getenv("DEBUG")) {
+    std::cout << "FastLanes Extension: fastlane_init called" << std::endl;
+  }
   duckdb::DuckDB db_wrapper(db);
   db_wrapper.LoadExtension<duckdb::FastlaneExtension>();
 }

@@ -1,7 +1,7 @@
 //===----------------------------------------------------------------------===//
 //                         DuckDB - fastlane
 //
-// table_function/read_fastlane.hpp
+// table_function/scan_fastlanes.hpp
 //
 //
 //===----------------------------------------------------------------------===//
@@ -14,9 +14,9 @@
 namespace duckdb {
 namespace ext_fastlane {
 
-TableFunction ReadFastlaneStreamFunction();
+TableFunction ScanFastlanesStreamFunction();
 
-void RegisterReadFastlaneStream(DatabaseInstance& db);
+void RegisterScanFastlanesStream(DatabaseInstance& db);
 
 }  // namespace ext_fastlane
 }  // namespace duckdb 

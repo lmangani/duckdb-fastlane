@@ -37,7 +37,7 @@ COPY (SELECT * FROM sample_data) TO "sample_data_4.fls" (FORMAT FLS, ROW_GROUP_S
 
 -- Read from a FastLanes file (if it exists)
 -- Note: This will return empty results if the file doesn't exist
-SELECT * FROM read_fastlane('sample_data.fls') LIMIT 10;
+SELECT * FROM scan_fastlanes('sample_data.fls') LIMIT 10;
 
 -- Test with different data types
 CREATE TABLE mixed_types AS 
@@ -57,7 +57,7 @@ COPY (SELECT * FROM mixed_types) TO "mixed_types.fls";
 SELECT * FROM write_fastlane(SELECT * FROM mixed_types);
 
 -- Test projection pushdown (only select specific columns)
-SELECT small_int, greeting, flag FROM read_fastlane('mixed_types.fls') LIMIT 5;
+SELECT small_int, greeting, flag FROM scan_fastlanes('mixed_types.fls') LIMIT 5;
 
 -- Test with complex queries using COPY TO
 COPY (
@@ -77,10 +77,10 @@ COPY (
 ) TO "complex_query.fls";
 
 -- Test glob pattern (equivalent to nanoarrow's FROM read_arrow('*.arrows'))
-SELECT * FROM read_fastlane('*.fls') LIMIT 10;
+SELECT * FROM scan_fastlanes('*.fls') LIMIT 10;
 
 -- Test list of files (equivalent to nanoarrow's FROM read_arrow(['test.arrows','test_2.arrows']))
-SELECT * FROM read_fastlane(['sample_data.fls','mixed_types.fls']) LIMIT 10;
+SELECT * FROM scan_fastlanes(['sample_data.fls','mixed_types.fls']) LIMIT 10;
 
 -- Test automatic file detection (files with .fls extension)
 -- SELECT * FROM 'sample_data.fls' LIMIT 10;
