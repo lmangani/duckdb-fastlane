@@ -4,28 +4,13 @@ if(VCPKG_TARGET_IS_WINDOWS)
     vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 endif()
 
-# FastLanes requires Clang, so we need to ensure it's available
-if(NOT VCPKG_TARGET_IS_WINDOWS)
-    find_program(CLANG_CXX NAMES clang++ clang++-15 clang++-16 clang++-17 clang++-18)
-    find_program(CLANG_C NAMES clang clang-15 clang-16 clang-17 clang-18)
-    
-    if(NOT CLANG_CXX OR NOT CLANG_C)
-        message(FATAL_ERROR "FastLanes requires Clang compiler. Please install clang and clang++.")
-    endif()
-endif()
-
-# FastLanes requires C++20
-# Note: FastLanes prefers Clang but can work with GCC in some cases
+# FastLanes prefers Clang but can work with GCC
 # We'll allow both compilers but warn if not using Clang
 if(NOT VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_OSX)
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         message(WARNING "FastLanes prefers Clang compiler but using ${CMAKE_CXX_COMPILER_ID}. This may cause issues.")
     endif()
 endif()
-
-# Set C++20 standard
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Use local FastLanes submodule
 # Get the path relative to the vcpkg_ports directory
@@ -36,8 +21,6 @@ set(SOURCE_PATH "${VCPKG_PORTS_DIR}/../third_party/fastlanes")
 if(NOT EXISTS "${SOURCE_PATH}")
     message(FATAL_ERROR "FastLanes source not found at ${SOURCE_PATH}. Please ensure the submodule is initialized.")
 endif()
-
-
 
 # Configure FastLanes
 vcpkg_configure_cmake(
@@ -54,8 +37,6 @@ vcpkg_configure_cmake(
         -DFLS_BUILD_PYTHON=OFF
         -DFLS_ENABLE_FSST_TESTING_AND_BENCHMARKING=OFF
         -DFLS_ENABLE_GALP_TESTING_AND_BENCHMARKING=OFF
-        -DCMAKE_C_COMPILER=${CLANG_C}
-        -DCMAKE_CXX_COMPILER=${CLANG_CXX}
 )
 
 vcpkg_install_cmake()
