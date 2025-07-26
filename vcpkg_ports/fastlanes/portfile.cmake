@@ -14,17 +14,12 @@ if(NOT EXISTS "${SOURCE_PATH}")
     message(FATAL_ERROR "FastLanes source not found at ${SOURCE_PATH}. Please ensure the submodule is initialized.")
 endif()
 
-# Directly modify the CMakeLists.txt to allow GCC
-file(READ "${SOURCE_PATH}/CMakeLists.txt" CMAKE_CONTENT)
-string(REPLACE 
-    "if (NOT \"${CMAKE_CXX_COMPILER_ID}\" MATCHES \"Clang\")"
-    "if (NOT \"${CMAKE_CXX_COMPILER_ID}\" MATCHES \"Clang|GNU\")"
-    CMAKE_CONTENT "${CMAKE_CONTENT}")
-string(REPLACE 
-    "message(FATAL_ERROR \"Only Clang is supported!\")"
-    "message(FATAL_ERROR \"Only Clang and GCC are supported!\")"
-    CMAKE_CONTENT "${CMAKE_CONTENT}")
-file(WRITE "${SOURCE_PATH}/CMakeLists.txt" "${CMAKE_CONTENT}")
+# Apply patches to allow GCC support
+vcpkg_apply_patches(
+    SOURCE_PATH "${SOURCE_PATH}"
+    PATCHES
+        "${CMAKE_CURRENT_LIST_DIR}/patches/allow-gcc.patch"
+)
 
 # Configure FastLanes with minimal options
 vcpkg_configure_cmake(
