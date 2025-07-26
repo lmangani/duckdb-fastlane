@@ -1,15 +1,13 @@
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 1234567..abcdefg 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -50,8 +50,8 @@ include(CTest)
- include(GNUInstallDirs)
+--- CMakeLists.txt.orig   2025-07-26 17:51:29.217594626 +0000
++++ CMakeLists.txt        2025-07-26 17:51:35.989691214 +0000
+@@ -48,8 +48,8 @@
  include(enable_sanitizer)
  
--# Checks : -------------------------------------------------------------------------------------------------------
+ # Checks : -------------------------------------------------------------------------------------------------------
 -if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-+# Checks : -------------------------------------------------------------------------------------------------------
+-    message(FATAL_ERROR "Only Clang is supported!")
 +if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
-     message(FATAL_ERROR "Only Clang and GCC are supported!")
++    message(FATAL_ERROR "Only Clang and GCC are supported!")
  endif ()
  if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+     message(FATAL_ERROR "Only Clang >= 13 is supported!")
