@@ -15,6 +15,8 @@ endif()
 
 # Apply patches directly to the source before configuring
 file(READ "${SOURCE_PATH}/CMakeLists.txt" CMAKE_CONTENT)
+
+# Patch 1: Allow GCC support
 string(REPLACE 
     "if (NOT \"${CMAKE_CXX_COMPILER_ID}\" MATCHES \"Clang\")"
     "if (NOT \"${CMAKE_CXX_COMPILER_ID}\" MATCHES \"Clang|GNU\")"
@@ -23,6 +25,17 @@ string(REPLACE
     "message(FATAL_ERROR \"Only Clang is supported!\")"
     "message(FATAL_ERROR \"Only Clang and GCC are supported!\")"
     CMAKE_CONTENT "${CMAKE_CONTENT}")
+
+# Patch 2: Fix macOS build by disabling -march=native
+string(REPLACE 
+    "message(STATUS \"Setting '-march=native' for x86 processors without AVX-512DQ.\")"
+    "message(STATUS \"Skipping '-march=native' for x86 processors to avoid cross-compilation issues.\")"
+    CMAKE_CONTENT "${CMAKE_CONTENT}")
+string(REPLACE 
+    "set(FLAGS \"-march=native\")"
+    "# set(FLAGS \"-march=native\")  # Disabled to avoid cross-compilation issues"
+    CMAKE_CONTENT "${CMAKE_CONTENT}")
+
 file(WRITE "${SOURCE_PATH}/CMakeLists.txt" "${CMAKE_CONTENT}")
 
 # Configure FastLanes with minimal options
