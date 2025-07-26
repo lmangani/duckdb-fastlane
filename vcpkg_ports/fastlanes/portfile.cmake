@@ -14,6 +14,39 @@ if(NOT EXISTS "${SOURCE_PATH}")
     message(FATAL_ERROR "FastLanes source not found at ${SOURCE_PATH}. Please ensure the submodule is initialized.")
 endif()
 
+# Create a temporary patch to allow GCC
+set(PATCH_CONTENT [[
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1234567..abcdefg 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -50,8 +50,8 @@ include(CTest)
+ include(GNUInstallDirs)
+ include(enable_sanitizer)
+ 
+-# Checks : -------------------------------------------------------------------------------------------------------
+-if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
++# Checks : -------------------------------------------------------------------------------------------------------
++if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
+     message(FATAL_ERROR "Only Clang and GCC are supported!")
+ endif ()
+ if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+]])
+
+# Write the patch to a temporary file
+file(WRITE "${CURRENT_BUILDTREES_DIR}/allow-gcc.patch" "${PATCH_CONTENT}")
+
+# Apply the patch manually
+execute_process(
+    COMMAND patch -p1 < "${CURRENT_BUILDTREES_DIR}/allow-gcc.patch"
+    WORKING_DIRECTORY "${SOURCE_PATH}"
+    RESULT_VARIABLE PATCH_RESULT
+)
+
+if(NOT PATCH_RESULT EQUAL 0)
+    message(WARNING "Failed to apply GCC patch, proceeding anyway")
+endif()
+
 # Configure FastLanes with minimal options
 vcpkg_configure_cmake(
     SOURCE_PATH "${SOURCE_PATH}"
