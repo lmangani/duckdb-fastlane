@@ -6,7 +6,14 @@
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/function/scalar_function.hpp"
 #include "duckdb/main/extension_util.hpp"
-#include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
+#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
+#include "duckdb/parser/parsed_data/create_scalar_function_info.hpp"
+#include "duckdb/function/table_function.hpp"
+#include "duckdb/function/scalar_function.hpp"
+#include "duckdb/common/types.hpp"
+#include "duckdb/common/types/data_chunk.hpp"
+#include "duckdb/common/vector.hpp"
+#include "scan_fastlanes.hpp"
 
 // FastLanes table function includes
 #include "table_function/scan_fastlanes.hpp"
@@ -84,12 +91,13 @@ void LoadInternal(DatabaseInstance& db) {
 
 }  // namespace
 
-void FastlaneExtension::Load(DuckDB& db) {
-  LoadInternal(*db.instance);
+void FastlaneExtension::Load(DuckDB &db) {
+    // Register the scan_fastlanes table function
+    ScanFastLanes::Register(*db.instance);
 }
 
 std::string FastlaneExtension::Name() {
-  return "fastlane";
+    return "fastlane";
 }
 
 std::string FastlaneExtension::Version() const {
@@ -104,16 +112,14 @@ std::string FastlaneExtension::Version() const {
 
 extern "C" {
 
-DUCKDB_EXTENSION_API void fastlane_init(duckdb::DatabaseInstance& db) {
-  if (std::getenv("DEBUG")) {
-    std::cout << "FastLanes Extension: fastlane_init called" << std::endl;
-  }
-  duckdb::DuckDB db_wrapper(db);
-  db_wrapper.LoadExtension<duckdb::FastlaneExtension>();
+DUCKDB_EXTENSION_API void fastlane_init(duckdb::DatabaseInstance &db) {
+    duckdb::FastlaneExtension extension;
+    duckdb::DuckDB db_wrapper(db);
+    extension.Load(db_wrapper);
 }
 
-DUCKDB_EXTENSION_API const char* fastlane_version() {
-  return duckdb::DuckDB::LibraryVersion();
+DUCKDB_EXTENSION_API const char *fastlane_version() {
+    return duckdb::DuckDB::LibraryVersion();
 }
 }
 

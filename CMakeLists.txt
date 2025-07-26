@@ -28,6 +28,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 # Separate sources for C++20 facade and standard DuckDB extension
 set(FASTLANES_FACADE_SOURCES 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scan_fastlanes.cpp
 )
 
 set(FASTLANES_CONVERTER_SOURCES
@@ -37,11 +38,8 @@ set(FASTLANES_CONVERTER_SOURCES
 
 set(EXTENSION_SOURCES 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlane_extension.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/scanner/scan_fastlanes.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/writer/write_fastlane_stream.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/type_mapping.cpp
-    ${FASTLANES_CONVERTER_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scan_fastlanes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/fastlanes_facade.cpp
 )
 
 # Build the C++20 facade library
@@ -62,6 +60,18 @@ build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 # Link everything together
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto fastlanes_facade ${FastLanes_LIBRARIES})
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto fastlanes_facade ${FastLanes_LIBRARIES})
+
+# Set C++20 for the main extension targets
+set_target_properties(${EXTENSION_NAME} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+set_target_properties(${LOADABLE_EXTENSION_NAME} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
 
 # Add FastLanes include directories to main extension targets
 target_include_directories(${EXTENSION_NAME} PRIVATE ${FastLanes_INCLUDE_DIRS})

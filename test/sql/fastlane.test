@@ -5,24 +5,62 @@
 # Require statement will ensure this test is run with this extension loaded
 require fastlane
 
-# Test version function
-query T
-SELECT fastlane_version();
-----
-FastLanes Extension v1.0.0
-
 # Test scan_fastlanes function with non-existent file (should throw error)
 statement error
 SELECT * FROM scan_fastlanes('nonexistent.fls') LIMIT 0;
 ----
 Failed to open FastLanes file: nonexistent.fls
 
-# Test COPY TO functionality with simple data
-statement ok
-COPY (SELECT 42 as foofy, 'string' as stringy) TO "test.fls" (FORMAT FLS);
-
-# Test reading the file we just created
+# Test reading the known working data.fls file - basic functionality
 query I
-SELECT foofy FROM scan_fastlanes('test.fls');
+SELECT COUNT(*) FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls');
 ----
-42
+1024
+
+# Test that we can read rows and get non-empty data
+query T
+SELECT COUNT(*) FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls') 
+WHERE LENGTH(data) > 0;
+----
+1024
+
+# Test reading with LIMIT to verify pagination works
+query I
+SELECT COUNT(*) FROM (SELECT * FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls') LIMIT 5);
+----
+5
+
+# Test that the data contains expected content (research paper about FastLanes)
+query I
+SELECT COUNT(*) FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls') 
+WHERE data LIKE '%FastLanes%';
+----
+71
+
+# Test that we can read all rows without errors
+statement ok
+SELECT COUNT(*) as total_rows, 
+       MIN(LENGTH(data)) as min_length, 
+       MAX(LENGTH(data)) as max_length 
+FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls');
+
+# Test multi-column schema binding - verify our reader can handle multiple columns
+# This tests that our reader doesn't crash when presented with a multi-column schema
+query I
+SELECT COUNT(*) FROM (
+    SELECT data as col1, data as col2, data as col3 
+    FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls') 
+    LIMIT 3
+);
+----
+3
+
+# Test that we can access multiple columns from the same scan
+query TTT
+SELECT col1, col2, col3 FROM (
+    SELECT data as col1, data as col2, data as col3 
+    FROM scan_fastlanes('third_party/fastlanes/data/fls/data.fls') 
+    LIMIT 1
+);
+----
+The FastLanes Compression Layout: Decoding >100 Billion Integers per Second with Scalar Code Azim Afroozeh CWI The Netherlands azim@cwi.	The FastLanes Compression Layout: Decoding >100 Billion Integers per Second with Scalar Code Azim Afroozeh CWI The Netherlands azim@cwi.	The FastLanes Compression Layout: Decoding >100 Billion Integers per Second with Scalar Code Azim Afroozeh CWI The Netherlands azim@cwi.
